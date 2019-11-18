@@ -47,6 +47,13 @@ class ACNet(object):
 
                     self._prepare_special_pull_op(scope)
 
+                    self._build_action_state_predict_net(
+                                                         encode_params         = self.global_AC.encode_params
+                                                        ,state_predict_params  = self.global_AC.state_predict_params
+                                                        ,action_predict_params = self.global_AC.action_predict_params )
+
+
+
             elif type == 'Target_General':
 
                 self.global_AC = globalAC
@@ -67,13 +74,11 @@ class ACNet(object):
                 self.OPT_A = tf.train.RMSPropOptimizer(self.learning_rate, name='Glo_RMSPropA')
 
                 # target_general_network
-                print(self.global_AC.universal_net_params)
                 self._build_global_net()
 
                 # target_special_network
                 self.special_a_prob,self.special_v,self.special_a_params,self.special_c_params =\
-                    _build_special_net(input=self.state)
-
+                    self._build_special_net(state_feature=self.state_feature)
 
                 self._prepare_global_loss(scope)
 
@@ -82,12 +87,12 @@ class ACNet(object):
                 # self._prepare_special_update_op(scope)
                 self._prepare_global_update_op(scope)
 
-                self._prepare_global_pull_op(scope)
-                self._prepare_special_pull_op(scope)
+                # self._prepare_global_pull_op(scope)
+                # self._prepare_special_pull_op(scope)
 
                 self._prepare_kl_devergance(scope)
 
-                self._prepare_many_goals_loss_grads_update
+                self._prepare_many_goals_loss_grads_update()
 
 
 
@@ -102,7 +107,7 @@ class ACNet(object):
 
                 self.spe_actor_reg_loss = -tf.reduce_mean(p_target*tf.log(tf.clip_by_value(p_update,1e-10,1.0)))
 
-                glo_log_prob = tf.reduce_sum(tf.log(self.global_a_prob + 1e-5)*tf.one_hot(self.a, self.dim_a, dtype=tf.float32),
+                glo_log_prob = tf.reduce_sum(tf.log(self.global_a_prob + 1e-5)*tf.one_hot(self.a, 4, dtype=tf.float32),
                                              axis=1,keep_dims=True)
 
                 # self.adv is calculated by target_special_network
@@ -147,7 +152,7 @@ class ACNet(object):
         with tf.name_scope(scope+'global_grads'):
             with tf.name_scope('global_net_grad'):
                 self.global_a_grads = [tf.clip_by_norm(item, 40) for item in
-                              tf.gradients(self.global_a_loss, self.global_a_params+self.global_AC.encode_params)]
+                              tf.gradients(self.global_a_loss, self.global_AC.universal_net_params+self.global_AC.encode_params)]
 
     def _prepare_global_update_op(self,scope):
         with tf.name_scope(scope+'_global_update'):
@@ -182,11 +187,11 @@ class ACNet(object):
             self.kl = self.KL_divergence(p_stable=p_target, p_advance=p_update)
             self.kl_mean = tf.reduce_mean(self.kl)
 
-    def _prepare_global_pull_op(self,scope):
-        with tf.name_scope(scope+'pull_global_params'):
-            self.pull_a_params_global = [l_p.assign(g_p) for l_p, g_p in
-                                         zip(self.global_a_params, self.global_AC.universal_net_params)]
-
+    # def _prepare_global_pull_op(self,scope):
+    #     with tf.name_scope(scope+'pull_global_params'):
+    #         self.pull_a_params_global = [l_p.assign(g_p) for l_p, g_p in
+    #                                      zip(self.global_a_params, self.global_AC.universal_net_params)]
+    #
     def _prepare_special_pull_op(self,scope):
         with tf.name_scope(scope+'pull_special_params'):
             self.pull_a_params_special_dict, self.pull_c_params_special_dict = dict(), dict()
@@ -216,19 +221,21 @@ class ACNet(object):
         self.session.run(self.update_global_a_op, feed_dict)  # local grads applies to global net
 
     def pull_global(self):
-        self.session.run([self.pull_a_params_global])
+        # self.session.run([self.pull_a_params_global])
+        return
 
     def pull_special(self,target_id):  # run by a local
         self.session.run([self.pull_a_params_special_dict[target_id]
                              ,self.pull_c_params_special_dict[target_id]])
 
-    def spe_choose_action(self, s, t):  # run by a local
-        prob_weights = self.session.run(self.special_a_prob, feed_dict={self.s: s[np.newaxis, :]} )
+    def spe_choose_action(self, state_image):  # run by a local
+        prob_weights = self.session.run(self.special_a_prob, feed_dict={self.state_image: state_image[np.newaxis, :]} )
         action = np.random.choice(range(prob_weights.shape[1]),p=prob_weights.ravel())
         return action,prob_weights
 
-    def glo_choose_action(self, s, t):  # run by a local
-        prob_weights = self.session.run(self.global_a_prob, feed_dict={self.s: s[np.newaxis, :],self.t: t[np.newaxis, :]} )
+    def glo_choose_action(self, current_image, target_image):  # run by a local
+        prob_weights = self.session.run(self.global_a_prob,
+                feed_dict={self.state_image: current_image[np.newaxis, :],self.target_image: target_image[np.newaxis, :]} )
         action = np.random.choice(range(prob_weights.shape[1]),p=prob_weights.ravel())
         return action,prob_weights.ravel()
 
@@ -259,8 +266,8 @@ class ACNet(object):
         self.next_image     = tf.placeholder(tf.float32,[None,300,400,3],name='next_image')
         self.action = tf.placeholder(tf.int32, [None, ],name="transition_action")
 
-        current_feature = _build_encode_net(input_image=self.current_image,encode_params=encode_params)
-        next_feature = _build_encode_net(input_image=self.next_image,encode_params=encode_params)
+        current_feature = self._build_encode_net(input_image=self.current_image,encode_params=encode_params)
+        next_feature = self._build_encode_net(input_image=self.next_image,encode_params=encode_params)
 
         # current_state||next_state --> action
         cur_next_concat = tf.concat([current_feature, next_feature], axis=1)
@@ -286,7 +293,7 @@ class ACNet(object):
         self.action_many_goals = tf.placeholder(tf.int32, [None, ], 'Action_mg')
         self.mg_loss = -tf.reduce_mean(self.global_a_prob*tf.log(tf.clip_by_value(tf.one_hot(self.action_many_goals, 4, dtype=tf.float32),1e-10,1.0)))
         self.mg_grads =  self.special_a_grads = [tf.clip_by_norm(item, 40) for item in
-                    tf.gradients(self.mg_loss,self.global_a_params+self.global_AC.encode_params)]
+                    tf.gradients(self.mg_loss,self.global_AC.universal_net_params+self.global_AC.encode_params)]
         self.update_global_with_mg = self.OPT_A.apply_gradients(list(zip(self.mg_grads,
                                     self.global_AC.universal_net_params+self.global_AC.encode_params)))
 
@@ -314,7 +321,9 @@ class ACNet(object):
         self.scene_layer   = tf.nn.elu(tf.matmul(self.fusion_layer, self.global_AC.universal_net_params[2]) + self.global_AC.universal_net_params[3])
         # scene_layer --> prob
         self.global_logits = tf.matmul(self.scene_layer, self.global_AC.universal_net_params[4]) + self.global_AC.universal_net_params[5]
+
         self.global_a_prob = tf.nn.softmax(self.global_logits)
+
 
     def _build_universal_network_params_dict(self):
         # fusion

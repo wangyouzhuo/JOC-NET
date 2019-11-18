@@ -28,7 +28,7 @@ class Spe_Worker(Worker):
                 step_in_episode = 0
                 while True:
                     self.AC.load_weight(target_id=target_id)
-                    a,_ = self.AC.spe_choose_action(current_image, target_image)
+                    a,_ = self.AC.spe_choose_action(current_image)
                     current_image_next, r, done, info = self.env.take_action(a)
                     ep_r += r
                     buffer_s.append(current_image)
@@ -53,7 +53,7 @@ class Spe_Worker(Worker):
 
                         buffer_v_special.reverse()
 
-                        buffer_s, buffer_a, buffer_t = np.vstack(buffer_s),np.array(buffer_a),np.vstack(buffer_t)
+                        buffer_s, buffer_a = np.vstack(buffer_s),np.array(buffer_a)
                         buffer_v_special = np.vstack(buffer_v_special)
 
                         feed_dict = {
@@ -62,7 +62,7 @@ class Spe_Worker(Worker):
                             self.AC.special_v_target: buffer_v_special,
                             }
                         self.AC.update_special(feed_dict,target_id)
-                        buffer_s, buffer_a, buffer_r, buffer_t = [], [], [], []
+                        buffer_s, buffer_a, buffer_r = [], [], []
                         self.AC.pull_special(target_id=target_id)
                     current_image = current_image_next
                     total_step += 1
