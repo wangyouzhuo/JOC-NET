@@ -31,6 +31,7 @@ device = '/gpu:0'
 
 
 LR_A = 0.00005  # learning rate for actor
+LR_C = 0.00005
 
 LR_SPE_A = 0.0001
 LR_SPE_C = 0.0001

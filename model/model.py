@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 from model.model_op import _build_encode_net,_build_encode_params_dict,_build_universal_network_params_dict,_build_special_params_dict
 from model.model_op import _build_special_net,_build_global_net
+from config.config import *
 
 
 class ACNet(object):
@@ -31,8 +32,8 @@ class ACNet(object):
 
                     self.special_v_target = tf.placeholder(tf.float32, [None, 1], 'special_V_target')
 
-                    self.OPT_A = tf.train.RMSPropOptimizer(LR_SPE_A, name='Spe_RMSPropA')
-                    self.OPT_C = tf.train.RMSPropOptimizer(LR_SPE_C, name='Spe_RMSPropC')
+                    self.OPT_A = tf.train.RMSPropOptimizer(LR_A, name='Spe_RMSPropA')
+                    self.OPT_C = tf.train.RMSPropOptimizer(LR_C, name='Spe_RMSPropC')
 
                     self.special_a_prob,self.special_v,self.special_a_params,self.special_c_params =\
                         _build_special_net(input=self.state_feature)
@@ -280,7 +281,7 @@ class ACNet(object):
         state_predict_loss =  tf.reduce_mean(tf.square(loss_raw))
         self.state_predict_grads = [tf.clip_by_norm(item, 40) for item in
                                     tf.gradients(state_predict_loss, encode_params+state_predict_params)]
-        self.update_state_predict_op = self.OPT_A.apply_gradients(list(zip(self.state_predict_grads, encode_params+state_predict
+        self.update_state_predict_op = self.OPT_A.apply_gradients(list(zip(self.state_predict_grads, encode_params+state_predict)))
 
     def _prepare_many_goals_loss_grads_update(self):
         self.action_many_goals = tf.placeholder(tf.int32, [None, ], 'Action_mg')
