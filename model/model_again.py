@@ -13,7 +13,6 @@ class ACNet(object):
 
         with tf.device(device):
             self.session = session
-
             if scope == 'Weight_Store':
                 with tf.variable_scope(scope):
                     # 把300*400*3的图像 编码成 2048维向量
@@ -67,7 +66,6 @@ class ACNet(object):
                         c_params_dict.update(kv_c)
                     self.special_actor_params_dict,self.special_critic_params_dict = a_params_dict,c_params_dict
                     self._prepare_store()
-
             elif type == 'Target_Special':
                 with tf.variable_scope(scope):
                     self.global_AC = globalAC
@@ -83,7 +81,6 @@ class ACNet(object):
                     self._prepare_special_net_loss_grads_update_pull()
                     # state-action-predict-network
                     self._build_and_prepare_action_state_predict_net()
-
             elif type == 'Target_General':
                 with tf.variable_scope(scope):
                     self.global_AC = globalAC
@@ -105,14 +102,13 @@ class ACNet(object):
                     self._prepare_universal_network_loss_grads_update_push_pull(scope)
                     self._prepare_many_goals_loss_grads_update()
 
-"""
-prepare poerations
-"""
+
 
     def _prepare_store(self):
         var = tf.global_variables()
         var_to_restore = [val for val in var if 'Weight_Store' in val.name ]
         self.saver = tf.train.Saver(var_to_restore )
+
     # 对于target-special-network和target-universal-network，都需要action-state-predict-network
     def _build_and_prepare_action_state_predict_net(self):
         self.current_image_sap  = tf.placeholder(tf.float32,[None,300,400,3],name='current_image')
@@ -276,9 +272,14 @@ prepare poerations
                                                 self.global_AC.universal_net_params)))
 
 
-"""
-update_operations
-"""
+
+
+
+
+
+    """
+    update_operations
+    """
 
     def update_special(self, feed_dict,target_id):  # run by a local
         self.session.run([self.update_special_a_dict[target_id],
