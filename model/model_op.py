@@ -109,8 +109,8 @@ def _build_global_net(state_feature,target_feature,universal_params):
     # fusion_layer --> scene_layer
     scene_layer = tf.nn.elu(tf.matmul(fusion_layer, universal_params[2]) + universal_params[3])
     # scene_layer --> prob
-    self.global_logits = tf.matmul(scene_layer, universal_params[4]) + universal_params[5]
-    prob = tf.nn.softmax(self.global_logits)
+    global_logits = tf.matmul(scene_layer, universal_params[4]) + universal_params[5]
+    prob = tf.nn.softmax(global_logits)
     return prob
 
 # 初始化一个target_special_network
@@ -118,8 +118,8 @@ def _build_special_net(state_feature):
     # special_actor
     w_actor = generate_fc_weight(shape=[2048, 4], name='special_w_a')
     b_actor = generate_fc_bias(shape=[4], name='special_b_a')
-    self.special_logits = tf.matmul(state_feature, w_actor) + b_actor
-    prob = tf.nn.softmax(self.special_logits)
+    special_logits = tf.matmul(state_feature, w_actor) + b_actor
+    prob = tf.nn.softmax(special_logits)
     # special_critic
     w_critic = generate_fc_weight(shape=[2048, 1], name='special_w_c')
     b_critic = generate_fc_bias(shape=[1], name='special_b_c')

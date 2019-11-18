@@ -54,6 +54,7 @@ class ACNet(object):
 
                 self.state_feature  = _build_encode_net(input_image=self.state_image,encode_params=self.global_AC.encode_params)
                 self.target_feature = _build_encode_net(input_image=self.state_image,encode_params=self.global_AC.encode_params)
+
                 self.target_image = tf.placeholder(tf.float32, [None, self.dim_s], 'Target_image')
                 self.target_feature = self._build_encode_net(scope,self.target_image,self.global_AC.global_encode_params)
 
@@ -85,6 +86,8 @@ class ACNet(object):
                 self._prepare_special_pull_op(scope)
 
                 self._prepare_kl_devergance(scope)
+
+                self._prepare_many_goals_loss_grads_update
 
 
 
@@ -251,7 +254,6 @@ class ACNet(object):
     def store(self,weight_path):
         self.saver.save(self.session,weight_path)
 
-
     def _build_action_state_predict_net(self,encode_params,state_predict_params,action_predict_params):
         self.current_image  = tf.placeholder(tf.float32,[None,300,400,3],name='current_image')
         self.next_image     = tf.placeholder(tf.float32,[None,300,400,3],name='next_image')
@@ -279,3 +281,27 @@ class ACNet(object):
         self.state_predict_grads = [tf.clip_by_norm(item, 40) for item in
                                     tf.gradients(state_predict_loss, encode_params+state_predict_params)]
         self.update_state_predict_op = self.OPT_A.apply_gradients(list(zip(self.state_predict_grads, encode_params+state_predict
+
+    def _prepare_many_goals_loss_grads_update(self):
+        self.action_many_goals = tf.placeholder(tf.int32, [None, ], 'Action_mg')
+        self.mg_loss = -tf.reduce_mean(self.global_a_prob*tf.log(tf.clip_by_value(tf.one_hot(self.action_many_goals, 4, dtype=tf.float32),1e-10,1.0)))
+        self.mg_grads =  self.special_a_grads = [tf.clip_by_norm(item, 40) for item in
+                    tf.gradients(self.mg_loss,self.global_a_params+self.global_AC.encode_params)]
+        self.update_global_with_mg = self.OPT_A.apply_gradients(list(zip(self.mg_grads,
+                                    self.global_AC.universal_net_params+self.global_AC.encode_params)))
+
+    def update_with_action_and_state_predict(self,current_image,next_image,action):
+        self.session.run([self.update_action_predict_op,self.update_state_predict_op],
+                         feed_dict={self.current_image: current_image[np.newaxis,:],
+                                    self.next_image   : next_image[np.newaxis,:],
+                                    self.action       : action[np.newaxis,:]})
+
+    def update_with_mg(self,current_image,next_image,action):
+        self.session.run(self.update_global_with_mg,feed_dict={
+            self.action_many_goals : action[np.newaxis,:],
+            self.state_image : current_image[np.newaxis,:],
+            self.target_image : next_image[np.newaxis,:]
+        })
+
+
+
