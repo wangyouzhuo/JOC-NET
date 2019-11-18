@@ -331,6 +331,20 @@ class ACNet(object):
         })
 
 
+    def _build_encode_net(self,input_image):
+        conv1 = tf.nn.conv2d(input_image, self.global_AC.conv1_weight, strides=[1, 4, 4, 1], padding='SAME')
+        relu1 = tf.nn.relu(tf.nn.bias_add(conv1, self.global_AC.conv1_bias))
+        conv2 = tf.nn.conv2d(relu1, self.global_AC.conv2_weight, strides=[1, 2, 2, 1], padding='SAME')
+        relu2 = tf.nn.relu(tf.nn.bias_add(conv2, self.global_AC.conv2_bias))
+        conv3 = tf.nn.conv2d(relu2, self.global_AC.conv3_weight, strides=[1, 2, 2, 1], padding='SAME')
+        relu3 = tf.nn.relu(tf.nn.bias_add(conv3, self.global_AC.conv3_bias))
+        conv4 = tf.nn.conv2d(relu3, self.global_AC.conv4_weight, strides=[1, 2, 2, 1], padding='SAME')
+        relu4 = tf.nn.relu(tf.nn.bias_add(conv4,self.global_AC.conv4_bias))
+        flatten_feature = flatten(relu4)
+        state_feature = tf.nn.elu(tf.matmul(flatten_feature, self.global_AC.fc_weight) + self.global_AC.fc_bias)
+        return state_feature
+
+
 
 
 
