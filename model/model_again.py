@@ -13,7 +13,7 @@ class ACNet(object):
             self.dim_a = N_A
             self.dim_s = N_S
             self.session = session
-
+            print("")
 
             if scope == 'Global_Net':
                 with tf.variable_scope(scope):
