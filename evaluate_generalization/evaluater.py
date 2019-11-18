@@ -1,6 +1,5 @@
-from env.THOR_LOADER import *
-from config.constant import *
-from config.params import *
+from Environment.env import *
+from config.config import *
 from tensorflow.python import pywrap_tensorflow
 import threading
 import tensorflow as tf

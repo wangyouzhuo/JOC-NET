@@ -6,7 +6,7 @@ from utils.global_episode_count import _increase_kl_beta,_decrease_kl_beta,_get_
 from utils.global_episode_count import _init_result_mean_list,_append_result_mean_list,_reset_result_mean_list,_get_train_mean_roa_reward
 from utils.global_episode_count import _init_reward_roa_show,_append_reward_roa_show,_get_reward_roa_show
 from utils.global_episode_count import _get_max_reward,_update_max_reward
-from config.constant import *
+from config.config import *
 import numpy as np
 from worker.worker import Worker
 from config.config import *
@@ -26,8 +26,8 @@ def count_list(target):
 
 class Glo_Worker(Worker):
 
-    def __init__(self, name,globalAC,sess,coord,N_A,N_S,device,type='Target_General'):
-        super().__init__(name=name, globalAC=globalAC, sess=sess, coord=coord,N_A= N_A,N_S= N_S,type=type,device=device)
+    def __init__(self, name,globalAC,sess,coord,device,type='Target_General'):
+        super().__init__(name=name, globalAC=globalAC, sess=sess, coord=coord,type=type,device=device)
 
 
     def work(self):

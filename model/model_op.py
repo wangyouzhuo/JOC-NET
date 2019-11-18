@@ -1,4 +1,6 @@
 import tensorflow as tf
+import numpy as np
+from config.config import *
 
 
 
@@ -65,8 +67,9 @@ def _build_universal_network_params_dict():
     # actor
     w_actor  = generate_fc_weight(shape=[512, 4] , name='global_w_actor')
     b_actor  = generate_fc_bias(shape=[4]        , name='global_b_actor')
-    a_params = [w_fusion, b_fusion,w_scene, b_scene, w_actor,  b_actor]
-    return a_params
+
+    params = [ w_fusion,b_fusion, w_scene,b_scene, w_actor, b_actor]
+    return params
 
 def _build_special_params_dict():
     a_params_dict,c_params_dict = dict(),dict()
@@ -87,31 +90,32 @@ def _build_special_params_dict():
   网络的初始化
 """
 # 初始化一个编码网络  image --> 2048-d feature
-def _build_encode_net(input_image,encode_params):
-    conv1 = tf.nn.conv2d(input_image, encode_params[0], strides=[1, 4, 4, 1], padding='SAME')
-    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, encode_params[1]))
-    conv2 = tf.nn.conv2d(relu1, encode_params[2], strides=[1, 2, 2, 1], padding='SAME')
-    relu2 = tf.nn.relu(tf.nn.bias_add(conv2, encode_params[3]))
-    conv3 = tf.nn.conv2d(relu2, encode_params[4], strides=[1, 2, 2, 1], padding='SAME')
-    relu3 = tf.nn.relu(tf.nn.bias_add(conv3, encode_params[5]))
-    conv4 = tf.nn.conv2d(relu3, encode_params[6], strides=[1, 2, 2, 1], padding='SAME')
-    relu4 = tf.nn.relu(tf.nn.bias_add(conv4, encode_params[7]))
-    flatten_feature = flatten(relu4)
-    state_feature = tf.nn.elu(tf.matmul(flatten_feature, encode_params[8]) + encode_params[9])
-    return state_feature
+# def _build_encode_net(input_image,encode_params):
+#     conv1 = tf.nn.conv2d(input_image, encode_params[0], strides=[1, 4, 4, 1], padding='SAME')
+#     relu1 = tf.nn.relu(tf.nn.bias_add(conv1, encode_params[1]))
+#     conv2 = tf.nn.conv2d(relu1, encode_params[2], strides=[1, 2, 2, 1], padding='SAME')
+#     relu2 = tf.nn.relu(tf.nn.bias_add(conv2, encode_params[3]))
+#     conv3 = tf.nn.conv2d(relu2, encode_params[4], strides=[1, 2, 2, 1], padding='SAME')
+#     relu3 = tf.nn.relu(tf.nn.bias_add(conv3, encode_params[5]))
+#     conv4 = tf.nn.conv2d(relu3, encode_params[6], strides=[1, 2, 2, 1], padding='SAME')
+#     relu4 = tf.nn.relu(tf.nn.bias_add(conv4, encode_params[7]))
+#     flatten_feature = flatten(relu4)
+#     state_feature = tf.nn.elu(tf.matmul(flatten_feature, encode_params[8]) + encode_params[9])
+#     return state_feature
 
 # 初始化一个target-universal 网络，输入为current_state_feature和target_state_feature, 输出为acrion_distribution
-def _build_global_net(state_feature,target_feature,universal_params):
-    # s_encode||t_encode --> concat
-    concat = tf.concat([state_feature, target_feature], axis=1)  # s_encode||t_encode --> concat
-    # concat --> fusion_layer
-    fusion_layer = tf.nn.elu(tf.matmul(concat, universal_params[0]) + universal_params[1])
-    # fusion_layer --> scene_layer
-    scene_layer = tf.nn.elu(tf.matmul(fusion_layer, universal_params[2]) + universal_params[3])
-    # scene_layer --> prob
-    global_logits = tf.matmul(scene_layer, universal_params[4]) + universal_params[5]
-    prob = tf.nn.softmax(global_logits)
-    return prob
+# def _build_global_net(state_feature,target_feature,universal_params):
+#     # s_encode||t_encode --> concat
+#     concat = tf.concat([state_feature, target_feature], axis=1)  # s_encode||t_encode --> concat
+#     # concat --> fusion_layer
+#     fusion_layer  = tf.nn.elu(tf.matmul(concat, universal_params[0]) + universal_params[1])
+#     print("fuck")
+#     # fusion_layer --> scene_layer
+#     scene_layer   = tf.nn.elu(tf.matmul(fusion_layer, universal_params[2]) + universal_params[3])
+#     # scene_layer --> prob
+#     global_logits = tf.matmul(scene_layer, universal_params[4]) + universal_params[5]
+#     prob = tf.nn.softmax(global_logits)
+#     return prob
 
 # 初始化一个target_special_network
 def _build_special_net(state_feature):
@@ -149,7 +153,7 @@ def _build_action_state_predict_net(current_image,transition_action,next_image
     # self.update_action_predict_op = self.OPT_A.apply_gradients(list(zip(self.action_predict_grads, encode_params+state_predict_params)))
 
     # current_state||action --> next_state
-    self.cur_action_concat = tf.concat([current_feature, self.action], axis=1)
+    cur_action_concat = tf.concat([current_feature, transition_action], axis=1)
     state_predict =  tf.nn.elu(tf.matmul(cur_next_concat, state_predict_params[0]) + state_predict_params[1])
 
     # loss_raw = tf.subtract(tf.stop_gradient(self.next_feature),state_predict)

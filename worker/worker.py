@@ -1,28 +1,25 @@
 from model.model import *
-from env.THOR_LOADER import *
+from Environment.env import *
 from utils.global_episode_count import _get_evaluate_count,_add_evaluate_count,_init_evaluate_count,\
     _evaluate_list_mean,_reset_evaluate_count
 from utils.global_episode_count import _init_evaluate_list,_reset_evaluate_list,_append_evaluate_list,_length_evaluate_list
 from utils.global_episode_count import _init_result_mean_list,_append_result_mean_list,_reset_result_mean_list
 import threading
-from config.params import *
-from config.constant import *
+from config.config import *
 from worker.evaluater import Evaluater
 
 
 class Worker(object):
 
-    def __init__(self, name, globalAC, sess, coord, N_A, N_S,type,device):
+    def __init__(self, name, globalAC, sess, coord,type,device):
         env = load_thor_env(scene_name='bedroom_04', random_start=True, random_terminal=True,
-                            whe_show=False, terminal_id=None, start_id=None, whe_use_image=False,
-                            whe_flatten=False, num_of_frames=1)
+                             terminal_id=None, start_id=None, num_of_frames=1)
         self.env = env
         self.name = name
-        self.AC = ACNet(scope=name, globalAC=globalAC, session=sess, N_A=N_A, N_S=N_S,type=type,device=device)
+        self.AC = ACNet(scope=name, globalAC=globalAC, session=sess, type=type,device=device)
         self.session = sess
         self.coord = coord
-        self.N_A = N_A
-        self.N_S = N_S
+
 
 
     def work(self):

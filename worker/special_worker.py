@@ -8,8 +8,8 @@ from worker.worker import Worker
 
 class Spe_Worker(Worker):
 
-    def __init__(self, name, globalAC, sess, coord, N_A, N_S,device,type='Target_Special'):
-        super().__init__(name=name, globalAC=globalAC, sess=sess, coord=coord,N_A= N_A,N_S= N_S,type=type,device=device)
+    def __init__(self, name, globalAC, sess, coord,device,type='Target_Special'):
+        super().__init__(name=name, globalAC=globalAC, sess=sess, coord=coord,type=type,device=device)
 
     def work(self):
         total_step = 1

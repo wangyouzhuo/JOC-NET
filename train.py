@@ -13,8 +13,7 @@ from utils.global_episode_count import _init_target_special_roa_dict
 from utils.global_episode_count import _init_targets_have_been_finished
 from utils.global_episode_count import _init_max_reward
 from model.model import *
-from config.params import *
-from config.constant import *
+from config.config import *
 import matplotlib.pyplot as plt
 from utils.op import *
 
@@ -33,15 +32,15 @@ if __name__ == "__main__":
         N_S,N_A = 2048,4
 
         tf.set_random_seed(-1)
-        GLOBAL_AC = ACNet('Global_Net',session=SESS,N_A=N_A,N_S=N_S,type=None,device=device)  # we only need its params
+        GLOBAL_AC = ACNet('Global_Net',session=SESS,type=None,device=device)  # we only need its params
         workers = []
         # Create worker
         for i in range(int(N_WORKERS * 0.5)):
             i_name = 'Spe_W_%i' % i  # worker name
-            workers.append(Spe_Worker(i_name, GLOBAL_AC,sess=SESS,coord=COORD,N_A=N_A,N_S=N_S,device=device))
+            workers.append(Spe_Worker(i_name, GLOBAL_AC,sess=SESS,coord=COORD,device=device))
         for i in range(int(N_WORKERS * 0.5)):
             i_name = 'Glo_W_%i' % i  # worker name
-            workers.append(Glo_Worker(i_name, GLOBAL_AC, sess=SESS, coord=COORD, N_A=N_A, N_S=N_S, device=device))
+            workers.append(Glo_Worker(i_name, GLOBAL_AC, sess=SESS, coord=COORD, device=device))
 
         GLOBAL_AC._prepare_store()
 

@@ -1,6 +1,4 @@
-from config.params import TARGET_ID_LIST
-from config.constant import *
-from config.params import *
+from config.config import *
 
 
 # ----------------------------------global count--------------------------------

@@ -187,53 +187,53 @@ def get_dim(self):
 
 
 
-if __name__ == "__main__":
-
-    env = load_thor_env(scene_name='bedroom_04', random_start=True, random_terminal=True,
-                         terminal_id=True, start_id=True,
-                         num_of_frames=1)
-
-
-    cur_state,tar_state = env.reset_env()
-
-    from utils.op import *
-
-    def flatten(x):
-        return tf.reshape(x, [-1, np.prod(x.get_shape().as_list()[1:])])
-
-    image_input = tf.placeholder(tf.float32,[None,300,400,3],name='test_image')
-
-    conv1_weight = generate_conv2d_weight(shape=[5,5,3,8],name="conv1_weight")
-    conv1_bais   = generate_conv2d_bias(shape=8,name='conv1_bias')
-    conv2_weight = generate_conv2d_weight(shape=[3,3,8,16],name="conv2_weight")
-    conv2_bais   = generate_conv2d_bias(shape=16,name='conv2_bias')
-    conv3_weight = generate_conv2d_weight(shape=[3,3,16,32],name="conv3_weight")
-    conv3_bais   = generate_conv2d_bias(shape=32,name='conv3_bias')
-    conv4_weight = generate_conv2d_weight(shape=[3,3,32,64],name="conv4_weight")
-    conv4_bais   = generate_conv2d_bias(shape=64,name='conv4_bias')
-    fc_weight    = generate_fc_weight(shape=[8320,2048],name='fc_weight')
-    fc_bias      = generate_fc_weight(shape=[2048],name='fc_bias')
-
-
-    conv1 = tf.nn.conv2d(image_input, conv1_weight, strides=[1, 4, 4, 1], padding='SAME')
-    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bais))
-    conv2 = tf.nn.conv2d(relu1, conv2_weight, strides=[1, 2, 2, 1], padding='SAME')
-    relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_bais))
-    conv3 = tf.nn.conv2d(relu2, conv3_weight, strides=[1, 2, 2, 1], padding='SAME')
-    relu3 = tf.nn.relu(tf.nn.bias_add(conv3, conv3_bais))
-    conv4 = tf.nn.conv2d(relu3, conv4_weight, strides=[1, 2, 2, 1], padding='SAME')
-    relu4 = tf.nn.relu(tf.nn.bias_add(conv4, conv4_bais))
-    flatten_feature = flatten(relu4)
-    output_feature = s_encode = tf.nn.elu(tf.matmul(flatten_feature, fc_weight) + fc_bias)
-
-
-
-
-
-with tf.Session() as sess:
-
-        tf.global_variables_initializer().run()
-
-        output_feature = sess.run(output_feature,feed_dict={image_input:tar_state[np.newaxis, :]})
-
-        print(output_feature.shape)
+# if __name__ == "__main__":
+#
+#     env = load_thor_env(scene_name='bedroom_04', random_start=True, random_terminal=True,
+#                          terminal_id=True, start_id=True,
+#                          num_of_frames=1)
+#
+#
+#     cur_state,tar_state = env.reset_env()
+#
+#     from utils.op import *
+#
+#     def flatten(x):
+#         return tf.reshape(x, [-1, np.prod(x.get_shape().as_list()[1:])])
+#
+#     image_input = tf.placeholder(tf.float32,[None,300,400,3],name='test_image')
+#
+#     conv1_weight = generate_conv2d_weight(shape=[5,5,3,8],name="conv1_weight")
+#     conv1_bais   = generate_conv2d_bias(shape=8,name='conv1_bias')
+#     conv2_weight = generate_conv2d_weight(shape=[3,3,8,16],name="conv2_weight")
+#     conv2_bais   = generate_conv2d_bias(shape=16,name='conv2_bias')
+#     conv3_weight = generate_conv2d_weight(shape=[3,3,16,32],name="conv3_weight")
+#     conv3_bais   = generate_conv2d_bias(shape=32,name='conv3_bias')
+#     conv4_weight = generate_conv2d_weight(shape=[3,3,32,64],name="conv4_weight")
+#     conv4_bais   = generate_conv2d_bias(shape=64,name='conv4_bias')
+#     fc_weight    = generate_fc_weight(shape=[8320,2048],name='fc_weight')
+#     fc_bias      = generate_fc_weight(shape=[2048],name='fc_bias')
+#
+#
+#     conv1 = tf.nn.conv2d(image_input, conv1_weight, strides=[1, 4, 4, 1], padding='SAME')
+#     relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bais))
+#     conv2 = tf.nn.conv2d(relu1, conv2_weight, strides=[1, 2, 2, 1], padding='SAME')
+#     relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_bais))
+#     conv3 = tf.nn.conv2d(relu2, conv3_weight, strides=[1, 2, 2, 1], padding='SAME')
+#     relu3 = tf.nn.relu(tf.nn.bias_add(conv3, conv3_bais))
+#     conv4 = tf.nn.conv2d(relu3, conv4_weight, strides=[1, 2, 2, 1], padding='SAME')
+#     relu4 = tf.nn.relu(tf.nn.bias_add(conv4, conv4_bais))
+#     flatten_feature = flatten(relu4)
+#     output_feature = s_encode = tf.nn.elu(tf.matmul(flatten_feature, fc_weight) + fc_bias)
+#
+#
+#
+#
+#
+# with tf.Session() as sess:
+#
+#         tf.global_variables_initializer().run()
+#
+#         output_feature = sess.run(output_feature,feed_dict={image_input:tar_state[np.newaxis, :]})
+#
+#         print(output_feature.shape)

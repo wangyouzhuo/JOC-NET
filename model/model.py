@@ -1,9 +1,10 @@
 from utils.op import *
 import tensorflow as tf
 import numpy as np
-from model.model_op import _build_encode_net,_build_encode_params_dict,_build_universal_network_params_dict,_build_special_params_dict
-from model.model_op import _build_special_net,_build_global_net
+from model.model_op import _build_encode_params_dict,_build_universal_network_params_dict,_build_special_params_dict
+from model.model_op import _build_special_net
 from config.config import *
+from model.model_op import *
 
 
 class ACNet(object):
@@ -16,8 +17,8 @@ class ACNet(object):
             if scope == 'Global_Net':
                 with tf.variable_scope(scope):
                     self.encode_params,self.action_predict_params,self.state_predict_params = _build_encode_params_dict()
-                    self.universal_net_params = _build_universal_network_params_dict()
-                    self.special_params_dict  = _build_special_params_dict()
+                    self._build_universal_network_params_dict()
+                    self.special_a_params_dict,self.special_c_params_dict  = _build_special_params_dict()
 
 
             elif type == 'Target_Special':
@@ -28,15 +29,15 @@ class ACNet(object):
                     self.state_image = tf.placeholder(tf.float32,[None,300,400,3], 'State_image')
                     self.a = tf.placeholder(tf.int32, [None, ], 'Action')
 
-                    self.state_feature = _build_encode_net(input_image=self.state_image,encode_params=self.global_AC.encode_params)
+                    self.state_feature = self._build_encode_net(input_image=self.state_image,encode_params=self.global_AC.encode_params)
 
                     self.special_v_target = tf.placeholder(tf.float32, [None, 1], 'special_V_target')
 
-                    self.OPT_A = tf.train.RMSPropOptimizer(LR_A, name='Spe_RMSPropA')
-                    self.OPT_C = tf.train.RMSPropOptimizer(LR_C, name='Spe_RMSPropC')
+                    self.OPT_SPE_A = tf.train.RMSPropOptimizer(LR_SPE_A, name='Spe_RMSPropA')
+                    self.OPT_SPE_C = tf.train.RMSPropOptimizer(LR_SPE_C, name='Spe_RMSPropC')
 
                     self.special_a_prob,self.special_v,self.special_a_params,self.special_c_params =\
-                        _build_special_net(input=self.state_feature)
+                        _build_special_net(state_feature=self.state_feature)
 
                     self._prepare_special_loss(scope)
 
@@ -53,13 +54,11 @@ class ACNet(object):
                 self.state_image = tf.placeholder(tf.float32 ,[None,300,400,3], 'State_image')
                 self.target_image = tf.placeholder(tf.float32,[None,300,400,3], 'Target_image')
 
-                self.state_feature  = _build_encode_net(input_image=self.state_image,encode_params=self.global_AC.encode_params)
-                self.target_feature = _build_encode_net(input_image=self.state_image,encode_params=self.global_AC.encode_params)
+                self.state_feature  = self._build_encode_net(input_image=self.state_image ,encode_params=self.global_AC.encode_params)
+                self.target_feature = self._build_encode_net(input_image=self.target_image,encode_params=self.global_AC.encode_params)
 
-                self.target_image = tf.placeholder(tf.float32, [None, self.dim_s], 'Target_image')
-                self.target_feature = self._build_encode_net(scope,self.target_image,self.global_AC.global_encode_params)
 
-                self.a        = tf.placeholder(tf.int32, [None, ], 'Action')
+                self.a        = tf.placeholder(tf.int32,   [None, ], 'Action')
                 self.adv      = tf.placeholder(tf.float32, [None,1], 'Advantage')
                 self.kl_beta  = tf.placeholder(tf.float32, [None,], 'KL_BETA')
 
@@ -68,9 +67,9 @@ class ACNet(object):
                 self.OPT_A = tf.train.RMSPropOptimizer(self.learning_rate, name='Glo_RMSPropA')
 
                 # target_general_network
-                self.global_a_prob ,self.global_a_params = \
-                    _build_global_net(state_feature=self.state_feature,target_feature=self.target_feature,
-                                      universal_params = self.global_AC.universal_net_params)
+                print(self.global_AC.universal_net_params)
+                self._build_global_net()
+
                 # target_special_network
                 self.special_a_prob,self.special_v,self.special_a_params,self.special_c_params =\
                     _build_special_net(input=self.state)
@@ -303,6 +302,59 @@ class ACNet(object):
             self.state_image : current_image[np.newaxis,:],
             self.target_image : next_image[np.newaxis,:]
         })
+
+    def _build_global_net(self):
+        # s_encode||t_encode --> concat
+        concat = tf.concat([self.state_feature, self.target_feature], axis=1)  # s_encode||t_encode --> concat
+        # concat --> fusion_layer
+        self.fusion_layer  = tf.nn.elu(tf.matmul(concat, self.global_AC.universal_net_params[0])
+                                                       + self.global_AC.universal_net_params[1])
+        print("fuck")
+        # fusion_layer --> scene_layer
+        self.scene_layer   = tf.nn.elu(tf.matmul(self.fusion_layer, self.global_AC.universal_net_params[2]) + self.global_AC.universal_net_params[3])
+        # scene_layer --> prob
+        self.global_logits = tf.matmul(self.scene_layer, self.global_AC.universal_net_params[4]) + self.global_AC.universal_net_params[5]
+        self.global_a_prob = tf.nn.softmax(self.global_logits)
+
+    def _build_universal_network_params_dict(self):
+        # fusion
+        self.w_fusion = generate_fc_weight(shape=[4096, 512], name='global_w_fusion')
+        self.b_fusion = generate_fc_bias(shape=[512]        , name='global_b_fusion')
+        # scene
+        self.w_scene  = generate_fc_weight(shape=[512, 512]  , name='global_w_scene')
+        self.b_scene  = generate_fc_bias(shape=[512]         , name='global_b_scene')
+        # actor
+        self.w_actor  = generate_fc_weight(shape=[512, 4] , name='global_w_actor')
+        self.b_actor  = generate_fc_bias(shape=[4]        , name='global_b_actor')
+
+        self.universal_net_params = [ self.w_fusion,self.b_fusion, self.w_scene,self.b_scene, self.w_actor, self.b_actor]
+
+    def _build_encode_net(self,input_image,encode_params):
+        conv1 = tf.nn.conv2d(input_image, encode_params[0], strides=[1, 4, 4, 1], padding='SAME')
+        relu1 = tf.nn.relu(tf.nn.bias_add(conv1, encode_params[1]))
+        conv2 = tf.nn.conv2d(relu1, encode_params[2], strides=[1, 2, 2, 1], padding='SAME')
+        relu2 = tf.nn.relu(tf.nn.bias_add(conv2, encode_params[3]))
+        conv3 = tf.nn.conv2d(relu2, encode_params[4], strides=[1, 2, 2, 1], padding='SAME')
+        relu3 = tf.nn.relu(tf.nn.bias_add(conv3, encode_params[5]))
+        conv4 = tf.nn.conv2d(relu3, encode_params[6], strides=[1, 2, 2, 1], padding='SAME')
+        relu4 = tf.nn.relu(tf.nn.bias_add(conv4, encode_params[7]))
+        flatten_feature = flatten(relu4)
+        state_feature = tf.nn.elu(tf.matmul(flatten_feature, encode_params[8]) + encode_params[9])
+        return state_feature
+
+    def _build_special_net(self,state_feature):
+        # special_actor
+        w_actor = generate_fc_weight(shape=[2048, 4], name='special_w_a')
+        b_actor = generate_fc_bias(shape=[4], name='special_b_a')
+        special_logits = tf.matmul(state_feature, w_actor) + b_actor
+        prob = tf.nn.softmax(special_logits)
+        # special_critic
+        w_critic = generate_fc_weight(shape=[2048, 1], name='special_w_c')
+        b_critic = generate_fc_bias(shape=[1], name='special_b_c')
+        value = tf.matmul(state_feature, w_critic) + b_critic
+        a_params = [w_actor,  b_actor ]
+        c_params = [w_critic, b_critic]
+        return prob, value, a_params, c_params
 
 
 
