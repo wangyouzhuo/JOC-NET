@@ -45,15 +45,7 @@ class Glo_Worker(Worker):
             while True:
                 self.AC.load_weight(target_id=target_id)
                 a,global_prob  = self.AC.glo_choose_action(current_image, target_image)
-
-                # compute kl_divergence
-                kl_dict  = {self.AC.s: np.vstack([current_image]),
-                            self.AC.t: np.vstack([target_image])}
-                kl = self.AC.compute_kl(kl_dict)
-                _append_kl_list(kl)
-
                 current_image_next, r, done, info = self.env.take_action(a)
-
                 _add_steps_count()
                 ep_r += r
                 buffer_s.append(current_image)
@@ -61,24 +53,12 @@ class Glo_Worker(Worker):
                 buffer_a.append(a)
                 buffer_t.append(target_image)
                 buffer_r.append(r)
-                if _get_steps_count()%4000 == 0:
-                    # compute the mean of kl : if kl>kl_max: increase kl_beta   if kl<kl_mean: decrease  kl_beta
-                    kl_list,kl_mean = _get_kl_mean()
-                    if kl_mean>KL_MAX:
-                        _increase_kl_beta()
-                    if kl_mean<KL_MIN:
-                        _decrease_kl_beta()
-                    kl_beta = _get_kl_beta()
-                    a_lr = _get_adaptive_learning_rate()
-                    #print("kl_beta: %6s     kl_list:%6s    kl_mean:%6s"%(round(kl_beta,4),round(count_list(kl_list),3),round(kl_mean,4)))
-                    _reset_kl_list()
-                #kl_beta = 0  # 此处决定 soft-imitation learning loss是否起作用
                 if step_in_episode % UPDATE_GLOBAL_ITER == 0 or done:  # update global and assign to local net
-                    buffer_v = self.AC.get_special_value(feed_dict={self.AC.s: buffer_s})
+                    buffer_v = self.AC.get_special_value(feed_dict={self.AC.state_image: buffer_s})
                     if done:
                         buffer_v[-1] = 0  # terminal
                     buffer_advantage = [0]*len(buffer_v)
-                    buffer_v_next = self.AC.get_special_value(feed_dict={self.AC.s: buffer_s_next})
+                    buffer_v_next = self.AC.get_special_value(feed_dict={self.AC.state_image: buffer_s_next})
                     for i in range(len(buffer_r)):
                         v_next = buffer_v_next[i]
                         reward = buffer_r[i]
@@ -86,24 +66,22 @@ class Glo_Worker(Worker):
                         advantage = q-buffer_v[i]
                         buffer_advantage[i] = advantage
 
-                    buffer_s, buffer_a, buffer_t = np.vstack(buffer_s), np.array(buffer_a), np.vstack(buffer_t)
+                    buffer_s, buffer_a, buffer_t = np.array(buffer_s), np.array(buffer_a), np.array(buffer_t)
                     buffer_advantage = np.vstack(buffer_advantage)
                     feed_dict = {
-                        self.AC.s: buffer_s,
-                        self.AC.a: buffer_a,
-                        self.AC.t: buffer_t,
-                        self.AC.kl_beta:[kl_beta],
-                        # self.AC.kl_beta:[0.0],
+                        self.AC.state_image: buffer_s,
+                        self.AC.action: buffer_a,
+                        self.AC.target_image: buffer_t,
                         self.AC.adv:buffer_advantage,
                         self.AC.learning_rate:a_lr
                        }
-                    self.AC.update_global(feed_dict)
+                    # print("buffer_s : ",buffer_s.shape)
+                    self.AC.update_universal(feed_dict)
                     buffer_s, buffer_a, buffer_r, buffer_t,buffer_s_next = [], [], [], [],[]
                     self.AC.pull_global()
                 current_image = current_image_next
                 step_in_episode += 1
                 if done or step_in_episode >= MAX_STEP_IN_EPISODE:
-                    # print("regularization!")
                     if done:
                         roa = round((self.env.short_dist * 1.0 / step_in_episode), 4)
                     else:

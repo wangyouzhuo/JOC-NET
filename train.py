@@ -12,7 +12,7 @@ from utils.global_episode_count import _init_reward_roa_show,_append_reward_roa_
 from utils.global_episode_count import _init_target_special_roa_dict
 from utils.global_episode_count import _init_targets_have_been_finished
 from utils.global_episode_count import _init_max_reward
-from model.model import *
+from model.model_again import *
 from config.config import *
 import matplotlib.pyplot as plt
 from utils.op import *
@@ -32,7 +32,7 @@ if __name__ == "__main__":
         N_S,N_A = 2048,4
 
         tf.set_random_seed(-1)
-        GLOBAL_AC = ACNet('Global_Net',session=SESS,type=None,device=device)  # we only need its params
+        GLOBAL_AC = ACNet('Weight_Store',session=SESS,type=None,device=device)  # we only need its params
         workers = []
         # Create worker
         for i in range(int(N_WORKERS * 0.5)):

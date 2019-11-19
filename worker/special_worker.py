@@ -37,7 +37,7 @@ class Spe_Worker(Worker):
                     buffer_r.append(r)
 
                     # current_image，current_image_next，a  这个transition来更新 前向/逆向动力学网络
-                    self.update_with_action_and_state_predict(current_image=current_image,
+                    self.AC.update_state_action_predict_network(current_image=current_image,
                                                               next_image=current_image_next,
                                                               action=a)
 
@@ -45,7 +45,8 @@ class Spe_Worker(Worker):
                         if done:
                             v_special = 0  # terminal
                         else:
-                            v_special =self.session.run(self.AC.special_v, {self.AC.s: current_image_next[np.newaxis, :]})[0, 0]
+                            v_special =self.session.run(self.AC.special_value,
+                                    {self.AC.state_image: current_image_next[np.newaxis, :]})[0, 0]
                         buffer_v_special = []
                         for r in buffer_r[::-1]:  # reverse buffer r
                             v_special = r + GAMMA * v_special
@@ -53,12 +54,12 @@ class Spe_Worker(Worker):
 
                         buffer_v_special.reverse()
 
-                        buffer_s, buffer_a = np.vstack(buffer_s),np.array(buffer_a)
+                        buffer_s, buffer_a = np.array(buffer_s),np.array(buffer_a)
                         buffer_v_special = np.vstack(buffer_v_special)
 
                         feed_dict = {
-                            self.AC.s: buffer_s,
-                            self.AC.a: buffer_a,
+                            self.AC.state_image: buffer_s,
+                            self.AC.action: buffer_a,
                             self.AC.special_v_target: buffer_v_special,
                             }
                         self.AC.update_special(feed_dict,target_id)
