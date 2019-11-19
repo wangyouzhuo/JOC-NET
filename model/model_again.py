@@ -81,7 +81,7 @@ class ACNet(object):
                     self._prepare_special_net_loss_grads_update_pull()
                     # state-action-predict-network
                     self._build_and_prepare_action_state_predict_net()
-            elif type == 'Target_General':
+            elif type == 'Target_Universal':
                 with tf.variable_scope(scope):
                     self.global_AC = globalAC
                     self.state_image = tf.placeholder(tf.float32 ,[None,300,400,3], 'State_image')
@@ -311,10 +311,6 @@ class ACNet(object):
                              self.next_image_sap     : next_image[np.newaxis,:],
                              self.action_sap         :  np.array([action])     })
 
-
-    def pull_global(self):
-        # self.session.run([self.pull_a_params_global])
-        return
 
     def pull_special(self,target_id):  # run by a local
         self.session.run([self.pull_a_params_special_dict[target_id]

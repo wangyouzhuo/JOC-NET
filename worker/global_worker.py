@@ -26,7 +26,7 @@ def count_list(target):
 
 class Glo_Worker(Worker):
 
-    def __init__(self, name,globalAC,sess,coord,device,type='Target_General'):
+    def __init__(self, name,globalAC,sess,coord,device,type='Target_Universal'):
         super().__init__(name=name, globalAC=globalAC, sess=sess, coord=coord,type=type,device=device)
 
 
@@ -75,10 +75,8 @@ class Glo_Worker(Worker):
                         self.AC.adv:buffer_advantage,
                         self.AC.learning_rate:a_lr
                        }
-                    # print("buffer_s : ",buffer_s.shape)
                     self.AC.update_universal(feed_dict)
                     buffer_s, buffer_a, buffer_r, buffer_t,buffer_s_next = [], [], [], [],[]
-                    self.AC.pull_global()
                 current_image = current_image_next
                 step_in_episode += 1
                 if done or step_in_episode >= MAX_STEP_IN_EPISODE:
