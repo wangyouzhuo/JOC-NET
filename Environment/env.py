@@ -52,7 +52,6 @@ class THORDiscreteEnvironment(object):
             self.terminal_state_id = random.sample(TARGET_ID_LIST,1)[0]
         #  choose start_state_id
         if self.random_start:
-            random_start_id = 0
             while True:
                 random_start_id = random.randrange(self.n_locations)
                 dist = self.shortest_path_distances[random_start_id][self.terminal_state_id]
