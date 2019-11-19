@@ -51,7 +51,6 @@ class ACNet(object):
                                                    self.w_scene  , self.b_scene,
                                                    self.w_actor  , self.b_actor]
 
-
                     a_params_dict,c_params_dict = dict(),dict()
                     for target_key in TARGET_ID_LIST:
                         w_actor  = generate_fc_weight(shape=[2048, 4], name='actor_w_'+str(target_key))
@@ -280,10 +279,12 @@ class ACNet(object):
         self.mg_grads =  self.special_a_grads = [tf.clip_by_norm(item, 40) for item in
                                         tf.gradients(self.mg_loss,
                                     [self.global_AC.w_fusion,self.global_AC.b_fusion,
-                                     self.global_AC.w_scene ,self.global_AC.b_fusion])]
+                                     self.global_AC.w_scene ,self.global_AC.b_scene,
+                                     self.global_AC.w_actor ,self.global_AC.b_actor])]
         self.update_global_with_mg = self.OPT_A.apply_gradients(list(zip(self.mg_grads,
                                      [self.global_AC.w_fusion,self.global_AC.b_fusion,
-                                      self.global_AC.w_scene ,self.global_AC.b_fusion])))
+                                      self.global_AC.w_scene ,self.global_AC.b_scene,
+                                      self.global_AC.w_actor ,self.global_AC.b_actor])))
 
 
     """
