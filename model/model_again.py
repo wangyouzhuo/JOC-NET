@@ -305,12 +305,11 @@ class ACNet(object):
         })
 
     def update_state_action_predict_network(self,current_image,action,next_image):
-        action = np.array([action])
         self.session.run([self.update_action_predict_op,self.update_state_predict_op],
                          feed_dict={
                              self.current_image_sap  : current_image[np.newaxis,:],
                              self.next_image_sap     : next_image[np.newaxis,:],
-                             self.action_sap         : action     })
+                             self.action_sap         :  np.array([action])     })
 
 
     def pull_global(self):
