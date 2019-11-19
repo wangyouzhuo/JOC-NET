@@ -248,7 +248,7 @@ class ACNet(object):
             actor_loss = glo_log_prob*self.adv
             self.glo_entropy = -tf.reduce_mean(self.global_a_prob*tf.log(self.global_a_prob + 1e-5), axis=1,keep_dims=True)  # encourage exploration
             if SOFT_LOSS_TYPE == "hard_imitation":
-                self.loss = -self.kl_beta*self.spe_actor_reg_loss
+                self.loss = self.spe_actor_reg_loss
             elif SOFT_LOSS_TYPE == 'no_soft_imitation':
                 self.loss =  ENTROPY_BETA*self.glo_entropy + actor_loss
             elif SOFT_LOSS_TYPE == 'with_soft_imitation':
