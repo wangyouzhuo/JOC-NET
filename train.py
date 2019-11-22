@@ -42,7 +42,7 @@ if __name__ == "__main__":
             i_name = 'Glo_W_%i' % i  # worker name
             workers.append(Glo_Worker(i_name, GLOBAL_AC, sess=SESS, coord=COORD, device=device))
 
-        GLOBAL_AC._prepare_store()
+        # GLOBAL_AC._prepare_store()
 
         SESS.run(tf.global_variables_initializer())
 

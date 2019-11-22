@@ -4,6 +4,7 @@ import h5py
 import json
 import numpy as np
 import random
+import pandas as pd
 import skimage.io
 from skimage.transform import resize
 import tensorflow as tf
@@ -45,6 +46,8 @@ class THORDiscreteEnvironment(object):
         #print(self.transition_graph)
         self.shortest_path_distances = self.h5_file['shortest_path_distance'][()]
 
+        # self.feature_data_path = '/home/wyz/PycharmProjects/JOC-NET/data/feature_encoded.csv'
+        # self.prepare_feature_dict()
 
     def reset_env(self):
         #  choose terminal_state_id
@@ -150,6 +153,13 @@ class THORDiscreteEnvironment(object):
         terminal_state = self.h5_file['observation'][self.terminal_state_id]/255.0
         return terminal_state
 
+    def prepare_feature_dict(self):
+        data = pd.read_csv(self.feature_data_path)
+        self.feature_dict = dict()
+        for i in range(self.n_locations):
+            current_feature = data['State_'+str(i)]
+            self.feature_dict[i] = current_feature
+
 
 
 
@@ -186,12 +196,12 @@ def get_dim(self):
 
 
 
-# if __name__ == "__main__":
-#
-#     env = load_thor_env(scene_name='bedroom_04', random_start=True, random_terminal=True,
-#                          terminal_id=True, start_id=True,
-#                          num_of_frames=1)
-#
+if __name__ == "__main__":
+
+    env = load_thor_env(scene_name='bedroom_04', random_start=True, random_terminal=True,
+                         terminal_id=True, start_id=True,
+                         num_of_frames=1)
+
 #
 #     cur_state,tar_state = env.reset_env()
 #

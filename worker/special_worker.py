@@ -37,15 +37,15 @@ class Spe_Worker(Worker):
                     buffer_r.append(r)
 
                     # current_image，current_image_next，a  这个transition来更新 前向/逆向动力学网络
-                    self.AC.update_state_action_predict_network(current_image=current_image,
-                                                              next_image=current_image_next,
-                                                              action=a)
+                    # self.AC.update_state_action_predict_network(current_image=current_image,
+                    #                                           next_image=current_image_next,
+                    #                                           action=a)
 
                     if step_in_episode % UPDATE_SPECIAL_ITER == 0 or done:  # update global and assign to local net
                         if done:
                             v_special = 0  # terminal
                         else:
-                            v_special =self.session.run(self.AC.special_value,
+                            v_special =self.session.run(self.AC.special_v,
                                     {self.AC.state_image: current_image_next[np.newaxis, :]})[0, 0]
                         buffer_v_special = []
                         for r in buffer_r[::-1]:  # reverse buffer r

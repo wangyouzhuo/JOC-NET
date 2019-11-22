@@ -3,7 +3,6 @@ import numpy as np
 from config.config import *
 
 
-
 def generate_fc_weight(shape, name):
     threshold = 1.0 / np.sqrt(shape[0])
     weight_matrix = tf.random_uniform(shape, minval=-threshold, maxval=threshold)

@@ -37,7 +37,6 @@ class Glo_Worker(Worker):
         while not self.coord.should_stop() and _get_train_count() < MAX_GLOBAL_EP:
             EPI_COUNT = _add_train_count()
             current_image, target_image = self.env.reset_env()
-            kl_beta = _get_kl_beta()
             target_id = self.env.terminal_state_id
             ep_r = 0
             step_in_episode = 0
@@ -75,7 +74,7 @@ class Glo_Worker(Worker):
                         self.AC.adv:buffer_advantage,
                         self.AC.learning_rate:a_lr
                        }
-                    self.AC.update_universal(feed_dict)
+                    self.AC.update_global(feed_dict)
                     buffer_s, buffer_a, buffer_r, buffer_t,buffer_s_next = [], [], [], [],[]
                 current_image = current_image_next
                 step_in_episode += 1
@@ -100,11 +99,11 @@ class Glo_Worker(Worker):
                         #   %(EPI_COUNT, round(roa_mean_train, 3), round(reward_mean_train, 2),EPI_COUNT,round(roa_eva,4),round(reward_eva,3)))
                         print("%s Train %s targets!     Epi:%6s || Glo_Roa:%6s  || Glo_Reward:%7s "
                             %(SOFT_LOSS_TYPE,len(TARGET_ID_LIST) ,EPI_COUNT ,round(roa_mean_train, 3), round(reward_mean_train,2)))
-                        if reward_mean_train>9.0 and reward_mean_train > _get_max_reward() and roa_mean_train>0.5:
-                            _update_max_reward(reward_mean_train)
-                            path = ROOT_PATH + "/weight/"+str(len(TARGET_ID_LIST))+"_Targets_"+SOFT_LOSS_TYPE+"_.ckpt"
-                            self.AC.global_AC.store(path)
-                            print("Store Weight!")
+                        # if reward_mean_train>9.0 and reward_mean_train > _get_max_reward() and roa_mean_train>0.5:
+                        #     _update_max_reward(reward_mean_train)
+                        #     path = ROOT_PATH + "/weight/"+str(len(TARGET_ID_LIST))+"_Targets_"+SOFT_LOSS_TYPE+"_.ckpt"
+                        #     self.AC.global_AC.store(path)
+                        #     print("Store Weight!")
 
                     break
 
