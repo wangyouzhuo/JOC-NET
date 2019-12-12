@@ -1,4 +1,4 @@
-from model.model_again import *
+from model.model_hybrid import *
 from Environment.env import *
 from utils.global_episode_count import _get_evaluate_count,_add_evaluate_count,_init_evaluate_count,\
     _evaluate_list_mean,_reset_evaluate_count
@@ -12,8 +12,9 @@ from worker.evaluater import Evaluater
 class Worker(object):
 
     def __init__(self, name, globalAC, sess, coord,type,device):
-        env = load_thor_env(scene_name='bedroom_04', random_start=True, random_terminal=True,
-                             terminal_id=None, start_id=None, num_of_frames=1)
+        env = load_thor_env(scene_name='bedroom_04' , random_start=True,
+                            random_terminal=True    , terminal_id=None,
+                            start_id=None           , num_of_frames=1)
         self.env = env
         self.name = name
         self.AC = ACNet(scope=name, globalAC=globalAC, session=sess, type=type,device=device)

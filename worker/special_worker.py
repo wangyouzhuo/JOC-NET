@@ -13,12 +13,13 @@ class Spe_Worker(Worker):
 
     def work(self):
         total_step = 1
-        buffer_s, buffer_a, buffer_r, buffer_t = [], [], [], []
+        buffer_s, buffer_a, buffer_r = [], [], []
         while not self.coord.should_stop() and _get_train_count() < MAX_GLOBAL_EP:
             if _get_length_targets_have_been_finished() >= len(TARGET_ID_LIST) and WHE_STOP_SPECIAL:
                 print("%s targers have all been finished!"%_get_length_targets_have_been_finished())
                 break
-            current_image, target_image = self.env.reset_env()
+            # self.image_current ,self.vgg_current,self.image_terminal,self.vgg_terminal
+            _ ,vgg_current,image_terminal,vgg_terminal = self.env.reset_env()
             target_id = self.env.terminal_state_id
             mean_roa,roa_list = _get_mean_target_special_roa_dict(target_id)
             if mean_roa>0.9 and WHE_STOP_SPECIAL:
@@ -28,12 +29,12 @@ class Spe_Worker(Worker):
                 step_in_episode = 0
                 while True:
                     self.AC.load_weight(target_id=target_id)
-                    a,_ = self.AC.spe_choose_action(current_image)
-                    current_image_next, r, done, info = self.env.take_action(a)
+                    a,_ = self.AC.spe_choose_action(vgg_current)
+                    # self.image_current ,self.vgg_current,reward,self.image_terminal,self.vgg_terminal,(currrent_id,next_id)
+                    _,vgg_current_next,r,done,info = self.env.take_action(a)
                     ep_r += r
-                    buffer_s.append(current_image)
+                    buffer_s.append(vgg_current)
                     buffer_a.append(a)
-                    buffer_t.append(target_image)
                     buffer_r.append(r)
 
                     # current_image，current_image_next，a  这个transition来更新 前向/逆向动力学网络
@@ -46,7 +47,7 @@ class Spe_Worker(Worker):
                             v_special = 0  # terminal
                         else:
                             v_special =self.session.run(self.AC.special_v,
-                                    {self.AC.state_image: current_image_next[np.newaxis, :]})[0, 0]
+                                    {self.AC.state_vgg_feature: vgg_current_next[np.newaxis, :]})[0, 0]
                         buffer_v_special = []
                         for r in buffer_r[::-1]:  # reverse buffer r
                             v_special = r + GAMMA * v_special
@@ -58,14 +59,14 @@ class Spe_Worker(Worker):
                         buffer_v_special = np.vstack(buffer_v_special)
 
                         feed_dict = {
-                            self.AC.state_image: buffer_s,
+                            self.AC.state_vgg_feature: buffer_s,
                             self.AC.action: buffer_a,
                             self.AC.special_v_target: buffer_v_special,
                             }
                         self.AC.update_special(feed_dict,target_id)
                         buffer_s, buffer_a, buffer_r = [], [], []
                         self.AC.pull_special(target_id=target_id)
-                    current_image = current_image_next
+                    vgg_current = vgg_current_next
                     total_step += 1
                     step_in_episode += 1
                     if done or step_in_episode >= MAX_STEP_IN_EPISODE:

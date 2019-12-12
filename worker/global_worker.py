@@ -34,30 +34,36 @@ class Glo_Worker(Worker):
         buffer_s, buffer_a, buffer_r, buffer_t = [], [], [], []
         buffer_s_next = []
         buffer_q = []
+        buffer_vgg_state_next = []
+        buffer_vgg_state = []
         while not self.coord.should_stop() and _get_train_count() < MAX_GLOBAL_EP:
             EPI_COUNT = _add_train_count()
-            current_image, target_image = self.env.reset_env()
+            # self.image_current ,self.vgg_current,self.image_terminal,self.vgg_terminal
+            image_current ,vgg_current,image_terminal,vgg_terminal = self.env.reset_env()
             target_id = self.env.terminal_state_id
             ep_r = 0
             step_in_episode = 0
             a_lr = 0.00001
             while True:
                 self.AC.load_weight(target_id=target_id)
-                a,global_prob  = self.AC.glo_choose_action(current_image, target_image)
-                current_image_next, r, done, info = self.env.take_action(a)
+                a,global_prob  = self.AC.glo_choose_action(image_current, image_terminal)
+                # self.image_current ,self.vgg_current,reward,self.image_terminal,self.vgg_terminal,(currrent_id,next_id)
+                image_current_next,vgg_current_next,r,done,info = self.env.take_action(a)
                 _add_steps_count()
                 ep_r += r
-                buffer_s.append(current_image)
-                buffer_s_next.append(current_image_next)
+                buffer_s.append(image_current)
+                buffer_s_next.append(image_current_next)
                 buffer_a.append(a)
-                buffer_t.append(target_image)
+                buffer_t.append(image_terminal)
                 buffer_r.append(r)
+                buffer_vgg_state_next.append(vgg_current_next)
+                buffer_vgg_state.append(vgg_current)
                 if step_in_episode % UPDATE_GLOBAL_ITER == 0 or done:  # update global and assign to local net
-                    buffer_v = self.AC.get_special_value(feed_dict={self.AC.state_image: buffer_s})
+                    buffer_v = self.AC.get_special_value(feed_dict={self.AC.state_vgg_feature: np.vstack(buffer_vgg_state)})
                     if done:
                         buffer_v[-1] = 0  # terminal
-                    buffer_advantage = [0]*len(buffer_v)
-                    buffer_v_next = self.AC.get_special_value(feed_dict={self.AC.state_image: buffer_s_next})
+                    buffer_advantage = [0]*len(buffer_s)
+                    buffer_v_next = self.AC.get_special_value(feed_dict={self.AC.state_vgg_feature: np.vstack(buffer_vgg_state_next)})
                     for i in range(len(buffer_r)):
                         v_next = buffer_v_next[i]
                         reward = buffer_r[i]
@@ -72,11 +78,12 @@ class Glo_Worker(Worker):
                         self.AC.action: buffer_a,
                         self.AC.target_image: buffer_t,
                         self.AC.adv:buffer_advantage,
-                        self.AC.learning_rate:a_lr
+                        self.AC.learning_rate:a_lr,
                        }
+                    # print(len(buffer_advantage),len(buffer_s))
                     self.AC.update_global(feed_dict)
                     buffer_s, buffer_a, buffer_r, buffer_t,buffer_s_next = [], [], [], [],[]
-                current_image = current_image_next
+                image_current = image_current_next
                 step_in_episode += 1
                 if done or step_in_episode >= MAX_STEP_IN_EPISODE:
                     if done:
@@ -84,7 +91,8 @@ class Glo_Worker(Worker):
                     else:
                         roa = 0.000
                     _append_result_mean_list(roa,ep_r)
-                    if EPI_COUNT%100 == 0:
+
+                    if EPI_COUNT%10 == 0:
                         roa_mean_train,reward_mean_train,length_train = _get_train_mean_roa_reward()
                         _reset_result_mean_list()
                         #roa_eva,reward_eva,lenght_eva = self.evaluate()

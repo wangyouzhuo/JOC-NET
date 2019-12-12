@@ -19,9 +19,17 @@ SCREEN_HEIGHT = 84
 HISTORY_LENGTH = 4
 ACTION_SIZE = 4 # action size
 
+WHE_RESIZE = True
+
+if WHE_RESIZE:
+    SCREEN_WIDTH  = 84
+    SCREEN_HEIGHT = 84
+else:
+    SCREEN_WIDTH  = 300
+    SCREEN_HEIGHT = 400
 
 # (300, 400, 3)
-
+LEN_VGG_STATE = 2048
 
 class THORDiscreteEnvironment(object):
 
@@ -73,7 +81,9 @@ class THORDiscreteEnvironment(object):
         self.terminal = False
         # self.memory   = np.zeros([M_SIZE,2048])
         self.step_count = 0
-        return self.state,self.terminal_state
+        self.image_current ,self.vgg_current  = self.state
+        self.image_terminal,self.vgg_terminal = self.terminal_state
+        return self.image_current ,self.vgg_current,self.image_terminal,self.vgg_terminal
 
 
     def take_action(self, action):
@@ -94,7 +104,9 @@ class THORDiscreteEnvironment(object):
             next_id = self.current_state_id
         reward = self.reward_env(self.terminal, self.collided)
         self.step_count = self.step_count + 1
-        return self.state,reward,self.terminal,(currrent_id,next_id)
+        self.image_current ,self.vgg_current  = self.state
+        self.image_terminal,self.vgg_terminal = self.terminal_state
+        return self.image_current ,self.vgg_current,reward,self.terminal,(currrent_id,next_id)
 
 
     def get_id_state(self,id):
@@ -145,13 +157,19 @@ class THORDiscreteEnvironment(object):
     def state(self):
         # read from hdf5 cache
         current_state = self.observation/255.0
-        return current_state
+        image_state  = cv2.resize(current_state,(84,84))
+        vgg_state = self.h5_file['resnet_feature'][self.current_state_id][0][:,np.newaxis].reshape([1,-1])[0]
+        return image_state,vgg_state
 
 
     @property
     def terminal_state(self):
-        terminal_state = self.h5_file['observation'][self.terminal_state_id]/255.0
-        return terminal_state
+        terminal_observtion = self.h5_file['observation'][self.terminal_state_id]/255.0
+        terminal_observtion = terminal_observtion/255.0
+        image_terminal  = cv2.resize(terminal_observtion,(84,84))
+        vgg_state = self.h5_file['resnet_feature'][self.terminal_state_id][0][:,np.newaxis].reshape([1,-1])[0]
+        return image_terminal,vgg_state
+
 
     def prepare_feature_dict(self):
         data = pd.read_csv(self.feature_data_path)
@@ -202,6 +220,10 @@ if __name__ == "__main__":
                          terminal_id=True, start_id=True,
                          num_of_frames=1)
 
+    env.reset_env()
+    print(env.state)
+    cv2.imshow('OriginalPicture',env.state)
+    cv2.waitKey()
 #
 #     cur_state,tar_state = env.reset_env()
 #
