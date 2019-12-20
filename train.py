@@ -39,10 +39,10 @@ if __name__ == "__main__":
 
         workers = []
         # Create worker
-        for i in range(int(N_WORKERS * 0.5)):
+        for i in range(int(N_WORKERS * 0.8)):
             i_name = 'Spe_W_%i' % i  # worker name
             workers.append(Spe_Worker(name=i_name, globalAC=GLOBAL_AC, sess=SESS, coord=COORD, device=device))
-        for i in range(int(N_WORKERS * 0.5)):
+        for i in range(int(N_WORKERS * 0.2)):
             i_name = 'Glo_W_%i' % i  # worker name
             workers.append(Glo_Worker(name=i_name, globalAC=GLOBAL_AC, sess=SESS, coord=COORD, device=device))
 

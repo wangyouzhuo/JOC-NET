@@ -91,7 +91,6 @@ class ACNet(object):
                     self._prepare_special_pull_op(scope)
 
 
-
     def _prepare_global_params(self, scope):
         self.conv1_weight = generate_conv2d_weight(shape=[3,3,3,8]  ,name="conv1_weight_encode")
         self.conv1_bias   = generate_conv2d_bias(shape=8            ,name='conv1_bias_encode')
@@ -103,27 +102,20 @@ class ACNet(object):
         self.conv4_bias   = generate_conv2d_bias(shape=64           ,name='conv4_bias_encode')
         self.fc_weight_for_encoder  = generate_fc_weight(shape=[576,512]    ,name='fc_weight_encode')
         self.fc_bias_for_encoder    = generate_fc_weight(shape=[512]         ,name='fc_bias_encode')
-
         encode_params = [self.conv1_weight  ,  self.conv1_bias,
                          self.conv2_weight  ,  self.conv2_bias,
                          self.conv3_weight  ,  self.conv3_bias,
                          self.conv4_weight  ,  self.conv4_bias,
                          self.fc_weight_for_encoder,self.fc_bias_for_encoder]
-
         # fusion
         self.w_fusion = generate_fc_weight(shape=[512*2, 1024], name='global_w_f')
         self.b_fusion = generate_fc_bias(shape=[1024]        , name='global_b_f')
-        # scene
-        # self.w_scene  = generate_fc_weight(shape=[1024, 512]  , name='global_w_s')
-        # self.b_scene  = generate_fc_bias(shape=[512]         , name='global_b_s')
         # actor
         self.w_actor  = generate_fc_weight(shape=[1024, 4] , name='global_w_a')
         self.b_actor  = generate_fc_bias(shape=[4]        , name='global_b_a')
-
         actor_params =  [self.w_fusion, self.b_fusion ,
                          # self.w_scene , self.b_scene,
                          self.w_actor ,  self.b_actor]
-
         return encode_params , actor_params
 
     def _build_special_params_dict(self,scope):
@@ -143,7 +135,6 @@ class ACNet(object):
 
     def _build_global_net(self, state_feature,target_feature,scope):
         with tf.variable_scope(scope):
-
             # s_encode||t_encode --> concat
             concat = tf.concat([state_feature, target_feature], axis=1)  # s_encode||t_encode --> concat
 
@@ -224,16 +215,18 @@ class ACNet(object):
             with tf.name_scope('global_net_grad'):
                 self.global_a_grads = [tf.clip_by_norm(item, 40) for item in
                                        tf.gradients(self.global_a_loss,
-                                                    self.global_encode_params+self.global_actor_params)]
+                                    self.global_encode_params + self.global_actor_params)]
+
 
     def _prepare_special_grads(self,scope):
         with tf.name_scope(scope+'special_grads'):
             with tf.name_scope('special_net_grad'):
                 self.special_a_grads = [tf.clip_by_norm(item, 40) for item in
-                                        tf.gradients(self.special_a_loss, self.special_a_params)]
+                                    tf.gradients(self.special_a_loss, self.special_a_params)]
 
                 self.special_c_grads = [tf.clip_by_norm(item, 40) for item in
-                                        tf.gradients(self.special_c_loss, self.special_c_params)]
+                                    tf.gradients(self.special_c_loss, self.special_c_params)]
+
 
     def _prepare_global_update_op(self,scope):
         with tf.name_scope(scope+'_global_update'):
@@ -241,7 +234,6 @@ class ACNet(object):
                                             self.global_AC.global_encode_params+self.global_AC.global_actor_params)))
 
     def _prepare_special_update_op(self,scope):
-        print(self.global_AC.name)
         with tf.name_scope(scope+'_special_update'):
             self.update_special_a_dict, self.update_special_c_dict = dict(), dict()
             self.update_special_q_dict = dict()
@@ -251,11 +243,13 @@ class ACNet(object):
                 self.update_special_a_dict.update(kv_a)
                 self.update_special_c_dict.update(kv_c)
 
+
     def _prepare_global_pull_op(self,scope):
         with tf.name_scope(scope+'pull_global_params'):
             self.pull_a_params_global = [l_p.assign(g_p) for l_p, g_p in
                                          zip(self.global_encode_params+self.global_actor_params,
                                              self.global_AC.global_encode_params+self.global_AC.global_actor_params)]
+
 
     def _prepare_special_pull_op(self,scope):
         with tf.name_scope(scope+'pull_special_params'):
@@ -268,6 +262,7 @@ class ACNet(object):
                               zip(self.special_c_params, self.global_AC.special_c_params_dict[key])]}
                 self.pull_a_params_special_dict.update(kv_a)
                 self.pull_c_params_special_dict.update(kv_c)
+
 
     def update_special(self, feed_dict,target_id):  # run by a local
         self.session.run([self.update_special_a_dict[target_id],
@@ -306,7 +301,6 @@ class ACNet(object):
         return  self.encoder_weight_dict[name]
 
     def prepare_encoder_weight(self):
-
         self.conv1_weight = generate_conv2d_weight(shape=[3,3,3,8]  ,name="conv1_weight_encode")
         self.conv1_bias   = generate_conv2d_bias(shape=8            ,name='conv1_bias_encode')
         self.conv2_weight = generate_conv2d_weight(shape=[3,3,8,16] ,name="conv2_weight_encode")
@@ -335,18 +329,19 @@ class ACNet(object):
 
     def _build_encode_net(self,input_image):
         conv1 = tf.nn.conv2d(input_image, self.conv1_weight, strides=[1, 4, 4, 1], padding='SAME')
-        relu1 = tf.nn.relu(tf.nn.bias_add(conv1, self.conv1_bias))
+        relu1 = tf.nn.elu(tf.nn.bias_add(conv1, self.conv1_bias))
 
         conv2 = tf.nn.conv2d(relu1, self.conv2_weight, strides=[1, 2, 2, 1], padding='SAME')
-        relu2 = tf.nn.relu(tf.nn.bias_add(conv2, self.conv2_bias))
+        relu2 = tf.nn.elu(tf.nn.bias_add(conv2, self.conv2_bias))
 
         conv3 = tf.nn.conv2d(relu2, self.conv3_weight, strides=[1, 2, 2, 1], padding='SAME')
-        relu3 = tf.nn.relu(tf.nn.bias_add(conv3, self.conv3_bias))
+        relu3 = tf.nn.elu(tf.nn.bias_add(conv3, self.conv3_bias))
 
         conv4 = tf.nn.conv2d(relu3, self.conv4_weight, strides=[1, 2, 2, 1], padding='SAME')
-        relu4 = tf.nn.relu(tf.nn.bias_add(conv4,self.conv4_bias))
+        relu4 = tf.nn.elu(tf.nn.bias_add(conv4,self.conv4_bias))
 
         flatten_feature = flatten(relu4)
+        print(flatten_feature)
         state_feature = tf.nn.elu(tf.matmul(flatten_feature, self.fc_weight_for_encoder) + self.fc_bias_for_encoder)
         return state_feature
 

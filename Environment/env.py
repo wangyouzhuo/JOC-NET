@@ -156,16 +156,21 @@ class THORDiscreteEnvironment(object):
     @property
     def state(self):
         # read from hdf5 cache
-        current_state = self.observation/255.0
+        current_state = self.observation/256.0
         image_state  = cv2.resize(current_state,(84,84))
         vgg_state = self.h5_file['resnet_feature'][self.current_state_id][0][:,np.newaxis].reshape([1,-1])[0]
         return image_state,vgg_state
 
+    def get_image_state(self,id):
+        ob = self.h5_file['observation'][id]
+        ob = ob/256.0
+        ob  = cv2.resize(ob,(84,84))
+        return ob
 
     @property
     def terminal_state(self):
-        terminal_observtion = self.h5_file['observation'][self.terminal_state_id]/255.0
-        terminal_observtion = terminal_observtion/255.0
+        terminal_observtion = self.h5_file['observation'][self.terminal_state_id]/256.0
+        terminal_observtion = terminal_observtion/256.0
         image_terminal  = cv2.resize(terminal_observtion,(84,84))
         vgg_state = self.h5_file['resnet_feature'][self.terminal_state_id][0][:,np.newaxis].reshape([1,-1])[0]
         return image_terminal,vgg_state
