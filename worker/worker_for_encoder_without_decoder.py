@@ -57,7 +57,9 @@ class Encoder_Network(object):
 
             self._prepare_weight()
 
+            # build_encoder
             self.current_state_feature = self._build_encode_net(input_image=self.current_image)
+            # build_decoder
             self.next_state_feature = self._build_encode_net(input_image=self.next_image)
 
             #-------------------------current_state||next_state --> action  逆向动力学  预测两个状态之间的动作---------------------
@@ -76,14 +78,13 @@ class Encoder_Network(object):
             #----------------------------------------current_state||action --> next_state---------------------------------------
             self.cur_action_concat = tf.concat([self.current_state_feature, tf.one_hot(self.action,4,dtype=tf.float32)], axis=1)
             self.state_feature_predict = (tf.matmul(self.cur_action_concat, self.weight_p_n_s_1) + self.bias_p_n_s_1)
-            # self.state_feature_predict = (tf.matmul(self.state_feature_predict_temp, self.weight_p_n_s_2) + self.bias_p_n_s_2)
-            # self.next_image_predicted = self._build_decode_net(input_feature=self.state_feature_predict)
-            self.loss_raw = tf.subtract(tf.stop_gradient(self.next_state_feature),self.state_feature_predict)
+            self.next_image_predicted = self._build_decode_net(input_feature=self.state_feature_predict)
+            self.loss_raw = tf.subtract(self.next_image,self.next_image_predicted)
             self.state_predict_loss =  tf.reduce_mean(tf.square(self.loss_raw))
             self.state_predict_grads = [tf.clip_by_norm(item, 40) for item in tf.gradients(self.state_predict_loss,
-                                         self.state_predict_params + self.encode_params)]
+                                         self.state_predict_params + self.encode_params + self.decode_params)]
             self.update_state_predict_op = self.OPT.apply_gradients(list(zip(self.state_predict_grads,
-                                         self.state_predict_params + self.encode_params)))
+                                         self.state_predict_params + self.encode_params + self.decode_params)))
 
             #-----------------------------current_image --> current_feature --> current_image-------------------------------
             self.decoded_image = self._build_decode_net(input_feature=self.current_state_feature)
@@ -97,45 +98,30 @@ class Encoder_Network(object):
 
     def _prepare_weight(self):
         # encode
-        self.conv1_weight = generate_conv2d_weight(shape=[3,3,3,8]  ,name="conv1_weight_encode")
-        self.conv1_bias   = generate_conv2d_bias(shape=8            ,name='conv1_bias_encode')
-        self.conv2_weight = generate_conv2d_weight(shape=[3,3,8,16] ,name="conv2_weight_encode")
-        self.conv2_bias   = generate_conv2d_bias(shape=16           ,name='conv2_bias_encode')
-        self.conv3_weight = generate_conv2d_weight(shape=[3,3,16,32],name="conv3_weight_encode")
-        self.conv3_bias   = generate_conv2d_bias(shape=32           ,name='conv3_bias_encode')
-        self.conv4_weight = generate_conv2d_weight(shape=[3,3,32,64],name="conv4_weight_encode")
-        self.conv4_bias   = generate_conv2d_bias(shape=64           ,name='conv4_bias_encode')
-        self.fc_weight_for_encoder  = generate_fc_weight(shape=[2304,2048]    ,name='fc_weight_encode')
-        self.fc_bias_for_encoder    = generate_fc_weight(shape=[2048]         ,name='fc_bias_encode')
+        self.fc1_weight = generate_fc_weight(shape=[84*84*3 , 4096*2]  ,name="fc1_weight")
+        self.fc1_bias   = generate_fc_bias(shape=[4096*2],name='fc1_bias')
+        self.fc2_weight = generate_fc_weight(shape=[4096*2,4096] ,name="fc2_weight")
+        self.fc2_bias   = generate_fc_bias(shape=[4096] ,name='fc2_bias')
+        self.fc3_weight = generate_fc_weight(shape=[4096,2048],name="fc3_weight")
+        self.fc3_bias   = generate_fc_bias(shape=2048 ,name='fc3_bias')
         self.encode_params = [
-            self.conv1_weight  ,  self.conv1_bias,
-            self.conv2_weight  ,  self.conv2_bias,
-            self.conv3_weight  ,  self.conv3_bias,
-            self.conv4_weight  ,  self.conv4_bias,
-            self.fc_weight_for_encoder   ,self.fc_bias_for_encoder
+            self.fc1_weight  ,  self.fc1_bias,
+            self.fc2_weight  ,  self.fc2_bias,
+            self.fc3_weight  ,  self.fc3_bias,
         ]
 
 
         # decode weight
-        self.fc_for_decoder = generate_fc_weight(shape=[2048,2304]   ,name='fc_decoder_weight')
-        self.bias_for_decoder    = generate_fc_bias(shape=[2304]     ,name='bias_decoder_weight')
-        self.conv5_weight = generate_conv2d_weight(shape=[3,3,64,32] ,name='conv5_weight_encode')
-        self.conv5_bias   = generate_conv2d_bias(shape=32            ,name='conv5_weight_bias')
-        self.conv6_weight = generate_conv2d_weight(shape=[3,3,32,16] ,name='conv6_weight_encode')
-        self.conv6_bias   = generate_conv2d_bias(shape=16            ,name='conv6_weight_bias')
-        self.conv7_weight = generate_conv2d_weight(shape=[3,3,16,8]  ,name='conv7_weight_encode')
-        self.conv7_bias   = generate_conv2d_bias(shape=8             ,name='conv7_weight_bias')
-        self.conv8_weight = generate_conv2d_weight(shape=[3,3,8,3]   ,name='conv8_weight_encode')
-        self.conv8_bias   = generate_conv2d_bias(shape=3             ,name='conv8_weight_bias')
-        self.conv9_weight = generate_conv2d_weight(shape=[3,3,3,3]   ,name='conv9_weight_encode')
-        self.conv9_bias   = generate_conv2d_bias(shape=3             ,name='conv9_weight_bias')
+        self.fc4_weight = generate_fc_weight(shape=[2048,4096]   ,name='fc4_weight')
+        self.fc4_bias   = generate_fc_bias(shape=[4096]          ,name='fc4_bias')
+        self.fc5_weight = generate_fc_weight(shape=[4096,4096*2] ,name='fc5_weight')
+        self.fc5_bias   = generate_fc_bias(shape=[4096*2]        ,name='fc5_bias')
+        self.fc6_weight = generate_fc_weight(shape=[4096,84*84*3],name='fc6_weight')
+        self.fc6_bias   = generate_fc_bias(shape=[84*84*3]       ,name='fc6_bias')
         self.decode_params = [
-            self.fc_for_decoder,self.bias_for_decoder,
-            self.conv5_weight  ,self.conv5_bias,
-            self.conv6_weight  ,self.conv6_bias,
-            self.conv7_weight  ,self.conv7_bias,
-            self.conv8_weight  ,self.conv8_bias,
-            self.conv9_weight  ,self.conv9_bias
+            self.fc4_weight  , self.fc4_bias,
+            self.fc5_weight  , self.fc5_bias,
+            self.fc6_weight  , self.fc6_bias,
         ]
 
 
@@ -151,69 +137,25 @@ class Encoder_Network(object):
         # current_state||action --> next_state  前向动力学  预测下一时刻的特质
         self.weight_p_n_s_1   = generate_fc_weight(shape=[2048+4,2048],name='p_n_state_weight_1')
         self.bias_p_n_s_1     = generate_fc_bias(shape=[2048]         ,name='p_n_state_bias_1')
-        # self.weight_p_n_s_2   = generate_fc_weight(shape=[4160,4160],name='p_ns_weight_2')
-        # self.bias_p_n_s_2     = generate_fc_bias(shape=[4160],name='p_ns__bias_2')
         self.state_predict_params = [
                                 self.weight_p_n_s_1,self.bias_p_n_s_1,
-                                # self.weight_p_n_s_2,self.bias_p_n_s_2
                                     ]
 
 
     def _build_encode_net(self,input_image):
-        conv1 = tf.nn.conv2d(input_image, self.conv1_weight, strides=[1, 2, 2, 1], padding='SAME')
-        # conv1 = tf.layers.max_pooling2d(conv1,(2,2),(2,2),padding='same')
-        conv1 = tf.nn.elu(tf.nn.bias_add(conv1, self.conv1_bias))
-        print("-------",conv1)
-
-        conv2 = tf.nn.conv2d(conv1, self.conv2_weight, strides=[1, 2, 2, 1], padding='SAME')
-        # conv2 = tf.layers.max_pooling2d(conv2,(2,2),(2,2),padding='same')
-        conv2 = tf.nn.elu(tf.nn.bias_add(conv2, self.conv2_bias))
-        print("-------",conv2)
-
-
-        conv3 = tf.nn.conv2d(conv2, self.conv3_weight, strides=[1, 2, 2, 1], padding='SAME')
-        conv3 = tf.nn.elu(tf.nn.bias_add(conv3, self.conv3_bias))
-        print("-------",conv3)
-
-
-        conv4 = tf.nn.conv2d(conv3, self.conv4_weight, strides=[1, 2, 2, 1], padding='SAME')
-        conv4 = tf.nn.elu(tf.nn.bias_add(conv4,self.conv4_bias))
-        print("-------",conv4)
-
-        flatten_feature = flatten(conv4)
-        print("after flatten : ",flatten_feature)
-        state_feature = (tf.matmul(flatten_feature, self.fc_weight_for_encoder) + self.fc_bias_for_encoder) # 2048
-        # return flatten_feature,state_feature,feature_map
-        return state_feature
+        
+        flatten_feature = tf.reshape(input_image, [-1,84*84*3])
+        fc1 = tf.nn.elu(tf.matmul(flatten_feature,self.fc1_weight) + self.fc1_bias)
+        fc2 = tf.nn.elu(tf.matmul(fc1,self.fc2_weight) + self.fc2_bias)
+        fc3 = tf.nn.elu(tf.matmul(fc3,self.fc3_weight) + self.fc3_bias)
+        return fc3
 
     def _build_decode_net(self,input_feature):
         # 4096 --> 4160
-        input_feature = tf.nn.elu(tf.matmul(input_feature, self.fc_for_decoder) + self.bias_for_decoder)
-
-        input_feature = inverse_flatten(input_feature,(-1,6,6,64))
-        print("input_feature ：",input_feature)
-        resize5 = tf.image.resize_images(input_feature,size=(11,11),method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        conv5 = tf.nn.conv2d(resize5, self.conv5_weight,strides=[1,1,1,1],  padding='SAME')
-        conv5 = tf.nn.elu(tf.nn.bias_add(conv5, self.conv5_bias))
-
-        resize6 = tf.image.resize_images(conv5,size=(21,21),method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        conv6 = tf.nn.conv2d(resize6, self.conv6_weight,strides=[1,1,1,1] , padding='SAME')
-        conv6 = tf.nn.elu(tf.nn.bias_add(conv6, self.conv6_bias))
-
-
-        resize7 = tf.image.resize_images(conv6,size=(42,42),method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        conv7 = tf.nn.conv2d(resize7, self.conv7_weight, strides=[1,1,1,1],padding='SAME')
-        conv7 = tf.nn.elu(tf.nn.bias_add(conv7, self.conv7_bias))
-
-
-        resize8 = tf.image.resize_images(conv7,size=(84,84),method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        conv8 = tf.nn.conv2d(resize8, self.conv8_weight,strides=[1,1,1,1], padding='SAME')
-        conv8 = tf.nn.elu(tf.nn.bias_add(conv8, self.conv8_bias))
-
-        conv9 = tf.nn.conv2d(conv8, self.conv9_weight,strides=[1,1,1,1], padding='SAME')
-        conv9 = tf.nn.elu(tf.nn.bias_add(conv9, self.conv9_bias))
-
-        decoded_image = tf.nn.sigmoid(conv9)
+        fc4 = tf.nn.elu(tf.matmul(input_feature, self.fc4_weight) + self.fc4_bias)
+        fc5 = tf.nn.elu(tf.matmul(fc4,self.fc5_weight) + self.fc5_bias)
+        fc6 = tf.nn.sigmoid(tf.matmul(fc5,self.fc6_weight) + self.fc6_bias)       
+        decoded_image = tf.reshape(fc6, [-1,84,84,3])
 
         return decoded_image
 

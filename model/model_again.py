@@ -4,7 +4,6 @@ import numpy as np
 from config.config import *
 from tensorflow.python import pywrap_tensorflow
 from model.model_op import *
-from Environment.env import *
 
 
 encoder_weight_path = "/home/wyz/PycharmProjects/JOC-NET/weight/encode_weight.ckpt"
@@ -32,7 +31,7 @@ class ACNet(object):
                     self.import_weight(encoder_weight_path)
                     self.prepare_encoder_weight()
 
-                    self.state_image = tf.placeholder(tf.float32,[None,SCREEN_WIDTH,SCREEN_HEIGHT,3], 'State_image')
+                    self.state_image = tf.placeholder(tf.float32,[None,300,400,3], 'State_image')
                     self.action = tf.placeholder(tf.int32, [None, ], 'Action')
                     self.state_feature = self._build_encode_net(input_image=self.state_image)
 
@@ -61,8 +60,8 @@ class ACNet(object):
                     self.import_weight(encoder_weight_path)
                     self.prepare_encoder_weight()
 
-                    self.state_image  = tf.placeholder(tf.float32 , [None,SCREEN_WIDTH,SCREEN_HEIGHT,3], 'State_image')
-                    self.target_image = tf.placeholder(tf.float32 , [None,SCREEN_WIDTH,SCREEN_HEIGHT,3], 'Target_image')
+                    self.state_image  = tf.placeholder(tf.float32 ,[None,300,400,3], 'State_image')
+                    self.target_image = tf.placeholder(tf.float32,[None,300,400,3], 'Target_image')
 
                     self.state_feature = self._build_encode_net(input_image=self.state_image)
                     self.target_feature = self._build_encode_net(input_image=self.target_image)
@@ -320,33 +319,19 @@ class ACNet(object):
         return  self.encoder_weight_dict[name]
 
     def prepare_encoder_weight(self):
-        # self.conv1_weight = self.get_weight(name="conv1_weight_encode")
-        # self.conv1_bias   = self.get_weight(name='conv1_bias_encode')
-        # self.conv2_weight = self.get_weight(name="conv2_weight_encode")
-        # self.conv2_bias   = self.get_weight(name='conv2_bias_encode')
-        # self.conv3_weight = self.get_weight(name="conv3_weight_encode")
-        # self.conv3_bias   = self.get_weight(name='conv3_bias_encode')
-        # self.conv4_weight = self.get_weight(name="conv4_weight_encode")
-        # self.conv4_bias   = self.get_weight(name='conv4_bias_encode')
-        # self.fc_weight    = self.get_weight(name='fc_weight_encode')
-        # self.fc_bias      = self.get_weight(name='fc_bias_encode')
-
-        self.conv1_weight = generate_conv2d_weight(shape=[3,3,3,8]  ,name="conv1_weight_encode")
-        self.conv1_bias   = generate_conv2d_bias(shape=8            ,name='conv1_bias_encode')
-        self.conv2_weight = generate_conv2d_weight(shape=[3,3,8,16] ,name="conv2_weight_encode")
-        self.conv2_bias   = generate_conv2d_bias(shape=16           ,name='conv2_bias_encode')
-        self.conv3_weight = generate_conv2d_weight(shape=[3,3,16,32],name="conv3_weight_encode")
-        self.conv3_bias   = generate_conv2d_bias(shape=32           ,name='conv3_bias_encode')
-        self.conv4_weight = generate_conv2d_weight(shape=[3,3,32,64],name="conv4_weight_encode")
-        self.conv4_bias   = generate_conv2d_bias(shape=64           ,name='conv4_bias_encode')
-        self.fc_weight_for_encoder  = generate_fc_weight(shape=[2304,2048]    ,name='fc_weight_encode')
-        self.fc_bias_for_encoder    = generate_fc_weight(shape=[2048]         ,name='fc_bias_encode')
-
-        self.encode_params = [self.conv1_weight  ,  self.conv1_bias,
-                              self.conv2_weight  ,  self.conv2_bias,
-                              self.conv3_weight  ,  self.conv3_bias,
-                              self.conv4_weight  ,  self.conv4_bias,
-                              self.fc_weight_for_encoder,self.fc_bias_for_encoder]
+        self.conv1_weight = self.get_weight(name="conv1_weight_encode")
+        self.conv1_bias   = self.get_weight(name='conv1_bias_encode')
+        self.conv2_weight = self.get_weight(name="conv2_weight_encode")
+        self.conv2_bias   = self.get_weight(name='conv2_bias_encode')
+        self.conv3_weight = self.get_weight(name="conv3_weight_encode")
+        self.conv3_bias   = self.get_weight(name='conv3_bias_encode')
+        self.conv4_weight = self.get_weight(name="conv4_weight_encode")
+        self.conv4_bias   = self.get_weight(name='conv4_bias_encode')
+        self.fc_weight    = self.get_weight(name='fc_weight_encode')
+        self.fc_bias      = self.get_weight(name='fc_bias_encode')
+        self.encode_params = [self.conv1_weight,self.conv1_bias,self.conv2_weight,self.conv2_bias,
+                              self.conv3_weight,self.conv3_bias,self.conv4_weight,self.conv4_bias,
+                              self.fc_weight,self.fc_bias]
 
     def import_weight(self,weight_path):
         model_reader = pywrap_tensorflow.NewCheckpointReader(weight_path)
@@ -360,16 +345,12 @@ class ACNet(object):
     def _build_encode_net(self,input_image):
         conv1 = tf.nn.conv2d(input_image, self.conv1_weight, strides=[1, 4, 4, 1], padding='SAME')
         relu1 = tf.nn.relu(tf.nn.bias_add(conv1, self.conv1_bias))
-
         conv2 = tf.nn.conv2d(relu1, self.conv2_weight, strides=[1, 2, 2, 1], padding='SAME')
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2, self.conv2_bias))
-
         conv3 = tf.nn.conv2d(relu2, self.conv3_weight, strides=[1, 2, 2, 1], padding='SAME')
         relu3 = tf.nn.relu(tf.nn.bias_add(conv3, self.conv3_bias))
-
         conv4 = tf.nn.conv2d(relu3, self.conv4_weight, strides=[1, 2, 2, 1], padding='SAME')
         relu4 = tf.nn.relu(tf.nn.bias_add(conv4,self.conv4_bias))
-
         flatten_feature = flatten(relu4)
         state_feature = tf.nn.elu(tf.matmul(flatten_feature, self.fc_weight) + self.fc_bias)
         return state_feature

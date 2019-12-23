@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow as tf
 from model.model_op import *
 from Environment.env import *
 from random import random,randint,sample
@@ -23,7 +24,7 @@ class VAE_Encoder(object):
     # Gaussian MLP as encoder
     def _build_gaussian_MLP_encoder(self,input_image, keep_prob):
         with tf.variable_scope("gaussian_MLP_encoder"):
-            # flatten_feature = flatten(input_image)
+    、       # flatten_feature = flatten(input_image)
             flatten_feature = tf.reshape(input_image, [-1,84*84*3])
 
             h = tf.nn.elu(tf.layers.dense(flatten_feature, 4096*2, name="fc1"))

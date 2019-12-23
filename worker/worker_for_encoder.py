@@ -90,7 +90,7 @@ class Encoder_Network(object):
 
     def _prepare_weight(self):
         # encode
-        self.conv1_weight = generate_conv2d_weight(shape=[3,3,3,8]  ,name="conv1_weight_encode")
+        self.fc_weight1 = te_conv2d_weight(shape=[3,3,3,8]  ,name="conv1_weight_encode")
         self.conv1_bias   = generate_conv2d_bias(shape=8            ,name='conv1_bias_encode')
         self.conv2_weight = generate_conv2d_weight(shape=[3,3,8,16] ,name="conv2_weight_encode")
         self.conv2_bias   = generate_conv2d_bias(shape=16           ,name='conv2_bias_encode')
