@@ -183,6 +183,12 @@ class THORDiscreteEnvironment(object):
             current_feature = data['State_'+str(i)]
             self.feature_dict[i] = current_feature
 
+    def get_next_state_image(self,current_state_id,action_id):
+        next_id = self.transition_graph[current_state_id][action_id].reshape([-1])[0]
+        next_image = self.get_image_state(next_id)
+        return next_image
+
+
 
 
 

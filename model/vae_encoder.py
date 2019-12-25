@@ -63,27 +63,31 @@ class VAE_Encoder(object):
             # mean = gaussian_params[:, :512]
             # stddev = 1e-6 + tf.nn.softplus(gaussian_params[:, 512:])
 
-            h1 = tf.layers.conv2d(input_image, 32, 4, strides=2, activation=tf.nn.relu, name="enc_conv1")
-            h2 = tf.layers.conv2d(h1, 64, 4, strides=2, activation=tf.nn.relu, name="enc_conv2")
-            h3 = tf.layers.conv2d(h2, 128, 4, strides=2, activation=tf.nn.relu, name="enc_conv3")
-            h4 = tf.layers.conv2d(h3, 256, 4, strides=2, activation=tf.nn.relu, name="enc_conv4")
+            h1 = tf.layers.conv2d(input_image, 32, 8, strides=2, activation=tf.nn.elu, name="enc_conv1")
+            h2 = tf.layers.conv2d(h1,          64, 6, strides=2, activation=tf.nn.elu, name="enc_conv2")
+            h3 = tf.layers.conv2d(h2,         128, 4, strides=2, activation=tf.nn.elu, name="enc_conv3")
+            h4 = tf.layers.conv2d(h3,         256, 3, strides=2, activation=tf.nn.elu, name="enc_conv4")
+            print("h4",h4)
             h_a = tf.reshape(h4, [-1, 3*3*256])
 
-            h5 = tf.layers.conv2d(input_image, 8,  10, strides=5, activation=tf.nn.relu, name="enc_conv5")
-            h6 = tf.layers.conv2d(h5,         16,   5, strides=3, activation=tf.nn.relu, name="enc_conv6")
+            # h5 = tf.layers.conv2d(input_image, 8,  15, strides=3, activation=tf.nn.elu, name="enc_conv5")
+            # h6 = tf.layers.conv2d(h5,         16,  5, strides=2, activation=tf.nn.elu, name="enc_conv6")
+            # # h7 = tf.layers.conv2d(h6,         32,  3, strides=2, activation=tf.nn.elu, name="enc_conv7")
 
-            h_b = tf.reshape(h6, [-1,4*4*16])
+            # print('h6 : ',h6)
 
-            h = tf.concat([h_a,h_b],axis=1)
-            print(h)
+            # h_b = tf.reshape(h6, [-1,10*10*16])
+
+            # h = tf.concat([h_a,h_b],axis=1)
+            # print(h)
             # gaussian_params = tf.layers.dense(h, 4096, name="gaussian_params")
             # mean = gaussian_params[:, :2048]
             # stddev = 1e-6 + tf.nn.softplus(gaussian_params[:, 2048:])
 
-            self.mu     = tf.layers.dense(h, 4096, name="enc_fc_mu")
-            self.logvar = tf.layers.dense(h, 4096, name="enc_fc_log_var")
+            self.mu     = tf.layers.dense(h_a, 2048, name="enc_fc_mu")
+            self.logvar = tf.layers.dense(h_a, 2048, name="enc_fc_log_var")
             self.sigma = tf.exp(self.logvar / 2.0)
-            self.epsilon = tf.random_normal([128, 4096])
+            self.epsilon = tf.random_normal([408, 2048],0.0,1.0)
             self.z = self.mu + self.sigma * self.epsilon
 
             return self.mu, self.sigma
@@ -143,11 +147,21 @@ class VAE_Encoder(object):
             # decoded_image  = tf.nn.relu(tf.nn.bias_add(conv9, self.conv9_bias))
             h = tf.layers.dense(self.z, 3*3*256, name="dec_fc")
             h = tf.reshape(h, [-1, 3, 3, 256])
-            h = tf.layers.conv2d_transpose(h, 128, 5, strides=2, activation=tf.nn.relu, name="dec_deconv1")
-            h = tf.layers.conv2d_transpose(h, 64, 5, strides=2, activation=tf.nn.relu, name="dec_deconv2")
-            h = tf.layers.conv2d_transpose(h, 32, 4, strides=2, activation=tf.nn.relu, name="dec_deconv3")
-            h = tf.layers.conv2d_transpose(h, 3, 4, strides=2, activation=tf.nn.relu, name="dec_deconv4")
-            # h = tf.layers.conv2d(h, 3, 5, strides=1, activation=tf.nn.relu, name="enc_conv4")
+            print("fuck u")
+
+            h = tf.layers.conv2d_transpose(h, 128, 5, strides=2, activation=tf.nn.elu, name="dec_deconv1")  # 9, 9, 128
+            print(h)
+
+            h = tf.layers.conv2d_transpose(h, 64, 5, strides=2, activation=tf.nn.elu, name="dec_deconv2")   #  21, 21, 64
+            print(h)
+
+            h = tf.layers.conv2d_transpose(h, 32, 4, strides=2, activation=tf.nn.elu, name="dec_deconv3")   #  44, 44, 32
+            print(h)
+
+            h = tf.layers.conv2d_transpose(h, 3, 4, strides=2, activation=tf.nn.elu, name="dec_deconv4")    # 90, 90, 3
+            print(h)
+
+        # h = tf.layers.conv2d(h, 3, 5, strides=1, activation=tf.nn.relu, name="enc_conv4")
 
             # h = tf.layers.conv2d_transpose(h, 3, 4, strides=2, activation=tf.nn.sigmoid, name="dec_deconv5")
 
@@ -172,11 +186,15 @@ class VAE_Encoder(object):
         # decoding
         y = self._build_bernoulli_MLP_decoder(z=z,keep_prob=keep_prob)
 
-        output_image = tf.clip_by_value(y, 1e-8, 1 - 1e-8)
+        self.output_image = tf.clip_by_value(y, 1e-8, 1 - 1e-8)
 
         # loss
+        eps = 1e-6 # avoid taking log of zero
+
+        # reconstruction loss
         self.r_loss = tf.reduce_sum(
-            tf.square(target_image - output_image),reduction_indices = [1,2,3]
+            tf.square(self.input_image - self.output_image),
+            reduction_indices = [1,2,3]
         )
         self.r_loss = tf.reduce_mean(self.r_loss)
 
@@ -185,13 +203,14 @@ class VAE_Encoder(object):
             (1 + self.logvar - tf.square(self.mu) - tf.exp(self.logvar)),
             reduction_indices = 1
         )
-        # self.kl_loss = tf.maximum(self.kl_loss,0.5*2048)
+        self.kl_loss = tf.maximum(self.kl_loss, 0.5 * 2048)
         self.kl_loss = tf.reduce_mean(self.kl_loss)
 
         self.loss = self.r_loss + self.kl_loss
 
 
-        return output_image, z, self.loss
+        return self.output_image, z, self.loss
+
 
     def _prepare_update_op(self):
         self.OPT_A = tf.train.RMSPropOptimizer(0.0001, name='RMSPropA')
@@ -213,6 +232,11 @@ class VAE_Encoder(object):
         return  decoded_image
 
 
+    def get_encode_feature(self,image):
+        feature = self.sess.run(self.z,feed_dict={self.input_image:image[np.newaxis, :]})
+        return feature
+
+
 if __name__ == '__main__':
 
     env = load_thor_env(scene_name='bedroom_04',
@@ -226,7 +250,7 @@ if __name__ == '__main__':
 
     for i in range(100000):
 
-        result = sample(range(n),128)
+        result = sample(range(n),408)
         data = [ env.get_image_state(id)for id in result]
 
         data = np.array(data)
@@ -239,12 +263,12 @@ if __name__ == '__main__':
 
         print("Episode:%s   Loss:%s"%(i,loss))
 
-        if i > 15000:
+        if i > 4000:
             for i in range(0,n):
                 input_image = env.get_image_state(i)
                 decoded_image= VAE.get_decoded_image(input_image)[0]
 
-                image_path = '/home/wyz/PycharmProjects/JOC-NET/data/images/'
+                image_path = '/home/wyz/PycharmProjects/JOC-NET/data/images/decoded_images/'
                 raw_name     = image_path +'raw_'+str(i)+'.jpeg'
                 decoded_name = image_path + 'decoded_'+str(i)+'.jpeg'
 
@@ -256,6 +280,19 @@ if __name__ == '__main__':
                 cv2.imwrite(raw_name     , input_image*256.0)
                 cv2.imwrite(decoded_name , decoded_image*256.0)
 
+            feature_dict = dict()
+            for state_id in range(env.n_locations):
+                # current_observation = env.h5_file['observation'][state_id]/255.0
+                # current_observation = np.array(current_observation)
+                # current_observation = cv2.resize(current_observation,(84,84))
+                current_img = env.get_image_state(state_id)
+                current_feature = VAE.get_encode_feature(current_img)
+                feature = current_feature[0].tolist()
+                feature_dict["State_"+str(state_id)] = feature
+            print('特征长度： ',len(feature))
+            file_path = '/home/wyz/PycharmProjects/JOC-NET/data/feature_encoded.csv'
+            df = pd.DataFrame(feature_dict)
+            df.to_csv(file_path)
             break
 
 

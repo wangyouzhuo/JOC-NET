@@ -11,21 +11,11 @@ def get_weight(encoder_weight_dict,name):
     return  encoder_weight_dict[name]
 
 def prepare_encoder_weight(encoder_weight_dict):
-    conv1_weight = get_weight(encoder_weight_dict,name="conv1_weight_encode")
-    conv1_bias   = get_weight(encoder_weight_dict,name='conv1_bias_encode')
-    conv2_weight = get_weight(encoder_weight_dict,name="conv2_weight_encode")
-    conv2_bias   = get_weight(encoder_weight_dict,name='conv2_bias_encode')
-    conv3_weight = get_weight(encoder_weight_dict,name="conv3_weight_encode")
-    conv3_bias   = get_weight(encoder_weight_dict,name='conv3_bias_encode')
-    conv4_weight = get_weight(encoder_weight_dict,name="conv4_weight_encode")
-    conv4_bias   = get_weight(encoder_weight_dict,name='conv4_bias_encode')
-    fc_weight    = get_weight(encoder_weight_dict,name='fc_weight_encode')
-    fc_bias      = get_weight(encoder_weight_dict,name='fc_bias_encode')
-    return conv1_weight,conv1_bias,\
-           conv2_weight,conv2_bias,\
-           conv3_weight,conv3_bias,\
-           conv4_weight,conv4_bias, \
-           fc_weight   ,fc_bias
+    fc1_weight = get_weight(encoder_weight_dict,name="fc1_weight")
+    fc1_bias   = get_weight(encoder_weight_dict,name='fc1_bias')
+    fc2_weight = get_weight(encoder_weight_dict,name="fc3_weight")
+    fc2_bias   = get_weight(encoder_weight_dict,name='fc3_bias')
+    return fc1_weight,fc1_bias,fc2_weight,fc2_bias
 
 encoder_weight_path = "/home/wyz/PycharmProjects/JOC-NET/weight/encode_weight1.0.ckpt"
 
@@ -37,43 +27,17 @@ for key in var_dict:
         result_dict[key.split('/')[-1]] = model_reader.get_tensor(key)
 encoder_weight_dict = result_dict
 
-conv1_weight,conv1_bias,\
-conv2_weight,conv2_bias,\
-conv3_weight,conv3_bias,\
-conv4_weight,conv4_bias,\
-fc_weight   ,fc_bias \
-    = prepare_encoder_weight(encoder_weight_dict)
+
+
+fc1_weight,fc1_bias,fc3_weight,fc3_bias= prepare_encoder_weight(encoder_weight_dict)
 
 input = tf.placeholder(tf.float32,[None,SCREEN_HEIGHT,SCREEN_WIDTH,3], 'State_image')
-
-conv1 = tf.nn.conv2d(input, conv1_weight, strides=[1, 2, 2, 1], padding='SAME')
-# conv1_pooling = tf.layers.max_pooling2d(conv1,(2,2),(2,2),padding='same')
-elu1 = tf.nn.elu(tf.nn.bias_add(conv1, conv1_bias))
-
-conv2 = tf.nn.conv2d(elu1, conv2_weight, strides=[1, 2, 2, 1], padding='SAME')
-# conv2_pooling = tf.layers.max_pooling2d(conv2,(2,2),(2,2),padding='same')
-elu2 = tf.nn.elu(tf.nn.bias_add(conv2, conv2_bias))
-
-conv3 = tf.nn.conv2d(elu2, conv3_weight, strides=[1, 2, 2, 1], padding='SAME')
-elu3 = tf.nn.elu(tf.nn.bias_add(conv3, conv3_bias))
-
-conv4 = tf.nn.conv2d(elu3, conv4_weight, strides=[1, 2, 2, 1], padding='SAME')
-relu4 = tf.nn.elu(tf.nn.bias_add(conv4,conv4_bias))
-
-flatten_feature = flatten(relu4)
-print('flatten_feature:',flatten_feature.shape)
-print('fc_weight:',fc_weight.shape)
-# print('flatten_feature:',flatten_feature)
-
-state_feature = (tf.matmul(flatten_feature,fc_weight) + fc_bias)
-
-
-
+flatten_feature = tf.reshape(input, [-1,84*84*3])
+fc1 = tf.nn.elu(tf.matmul(flatten_feature,fc1_weight) + fc1_bias)
+state_feature = tf.nn.elu(tf.matmul(fc1,fc3_weight) + fc3_bias)
 
 env = load_thor_env(scene_name='bedroom_04', random_start=True, random_terminal=True,
                          terminal_id=None, start_id=None, num_of_frames=1)
-
-
 
 SESS = tf.Session()
 
